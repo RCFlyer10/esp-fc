@@ -86,8 +86,8 @@ const uint8_t** Buzzer::schemes()
   static const uint8_t beeperDisarming[] = { 10, 10, 0 };
   static const uint8_t beeperArming[] = { 20, 0 };
   static const uint8_t beeperSystemInit[] = { 10, 0 };
-  static const uint8_t beeperBatteryLow[] = { 10, 150, 0 };
-  static const uint8_t beeperBatteryCritical[] = { 10, 40, 0 };
+  static const uint8_t beeperBatteryLow[] = { 75, 0 };
+  static const uint8_t beeperBatteryCritical[] = { 30, 0 };
 
   static const uint8_t* beeperSchemes[] = {
     //BUZZER_SILENCE
