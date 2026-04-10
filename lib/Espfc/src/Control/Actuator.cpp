@@ -201,7 +201,11 @@ void Actuator::updateBuzzer()
   {
     _model.state.buzzer.play(BUZZER_RX_LOST);
   }
-  if(_model.state.battery.warn(_model.config.vbat.cellWarning))
+  if(_model.state.battery.warn(_model.config.vbat.cellMin))
+  {
+    _model.state.buzzer.play(BUZZER_BAT_CRIT_LOW);
+  }
+  else if(_model.state.battery.warn(_model.config.vbat.cellWarning))
   {
     _model.state.buzzer.play(BUZZER_BAT_LOW);
   }
