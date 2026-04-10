@@ -173,8 +173,8 @@ int Blackbox::begin()
   batteryConfigMutable()->currentMeterSource = (currentMeterSource_e)_model.config.ibat.source;
   batteryConfigMutable()->voltageMeterSource = (voltageMeterSource_e)_model.config.vbat.source;
   batteryConfigMutable()->vbatwarningcellvoltage = _model.config.vbat.cellWarning;
-  batteryConfigMutable()->vbatmaxcellvoltage = 420;
-  batteryConfigMutable()->vbatmincellvoltage = 340;
+  batteryConfigMutable()->vbatmaxcellvoltage = _model.config.vbat.cellMax;
+  batteryConfigMutable()->vbatmincellvoltage = _model.config.vbat.cellMin;
 
   rxConfigMutable()->rcInterpolation = _model.config.input.interpolationMode;
   rxConfigMutable()->rcInterpolationInterval = _model.config.input.interpolationInterval;

@@ -349,28 +349,28 @@ void MspProcessor::processCommand(MspMessage& m, MspResponse& r, Device::SerialD
       break;
 
     case MSP_BATTERY_CONFIG:
-      r.writeU8(34);  // vbatmincellvoltage
-      r.writeU8(42);  // vbatmaxcellvoltage
+      r.writeU8(_model.config.vbat.cellMin);  // vbatmincellvoltage
+      r.writeU8(_model.config.vbat.cellMax / 10);  // vbatmaxcellvoltage
       r.writeU8((_model.config.vbat.cellWarning + 5) / 10);  // vbatwarningcellvoltage
       r.writeU16(0); // batteryCapacity
       r.writeU8(_model.config.vbat.source);  // voltageMeterSource
       r.writeU8(_model.config.ibat.source);  // currentMeterSource
-      r.writeU16(340); // vbatmincellvoltage
-      r.writeU16(420); // vbatmaxcellvoltage
+      r.writeU16(_model.config.vbat.cellMin); // vbatmincellvoltage
+      r.writeU16(_model.config.vbat.cellMax); // vbatmaxcellvoltage
       r.writeU16(_model.config.vbat.cellWarning); // vbatwarningcellvoltage
       break;
 
     case MSP_SET_BATTERY_CONFIG:
-      m.readU8();  // vbatmincellvoltage
-      m.readU8();  // vbatmaxcellvoltage
+      _model.config.vbat.cellMin = m.readU8() * 10;  // vbatmincellvoltage
+      _model.config.vbat.cellMax = m.readU8() * 10;  // vbatmaxcellvoltage
       _model.config.vbat.cellWarning = m.readU8() * 10;  // vbatwarningcellvoltage
       m.readU16(); // batteryCapacity
       _model.config.vbat.source = toVbatSource(m.readU8());  // voltageMeterSource
       _model.config.ibat.source = toIbatSource(m.readU8());  // currentMeterSource
       if(m.remain() >= 6)
       {
-        m.readU16(); // vbatmincellvoltage
-        m.readU16(); // vbatmaxcellvoltage
+        _model.config.vbat.cellMin = m.readU16(); // vbatmincellvoltage
+        _model.config.vbat.cellMax = m.readU16(); // vbatmaxcellvoltage
         _model.config.vbat.cellWarning = m.readU16();
       }
       break;
