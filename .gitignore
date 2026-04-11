@@ -38,3 +38,6 @@
 /tmp
 .vscode/
 .pio/
+
+src/version_generated.cpp
+.last_hash_*
