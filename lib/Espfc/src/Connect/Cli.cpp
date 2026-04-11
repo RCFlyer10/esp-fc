@@ -451,6 +451,8 @@ const Cli::Param * Cli::initialize(ModelConfig& c)
     Param(PSTR("vbat_scale"), &c.vbat.scale),
     Param(PSTR("vbat_mul"), &c.vbat.resMult),
     Param(PSTR("vbat_div"), &c.vbat.resDiv),
+    Param(PSTR("vbat_cell_max"), &c.vbat.cellMax),
+    Param(PSTR("vbat_cell_min"), &c.vbat.cellMin),
     Param(PSTR("vbat_cell_warn"), &c.vbat.cellWarning),
 
     Param(PSTR("ibat_source"), &c.ibat.source, currentSourceChoices),
@@ -697,6 +699,7 @@ const Cli::Param * Cli::initialize(ModelConfig& c)
     Param(PSTR("pin_buzzer_invert"), &c.buzzer.inverted),
     Param(PSTR("pin_led_invert"), &c.led.invert),
     Param(PSTR("pin_led_type"), &c.led.type, ledTypeChoices),
+    Param(PSTR("beeper_mask"), &c.buzzer.beeperMask),
 
 #ifdef ESPFC_I2C_0
     Param(PSTR("i2c_speed"), &c.i2cSpeed),

@@ -418,6 +418,7 @@ class Model
         1 << (BUZZER_RX_SET - 1) |
         1 << (BUZZER_DISARMING - 1) |
         1 << (BUZZER_ARMING - 1) |
+        1 << (BUZZER_BAT_CRIT_LOW - 1) |
         1 << (BUZZER_BAT_LOW - 1);
 
         if(config.gyro.dynamicFilter.count > DYN_NOTCH_COUNT_MAX)
