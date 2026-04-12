@@ -17,11 +17,12 @@ class Controller
     void innerLoopRobot();
     void outerLoop();
     void innerLoop();
-
+    
     inline float getTpaFactor() const;
     inline void resetIterm();
     float calculateSetpointRate(int axis, float input) const;
-    float calcualteAltHoldSetpoint() const;
+    float calcualteAltHoldSetpoint(float thrust) const;
+
 
   private:
     void beginAltHold();
