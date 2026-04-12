@@ -911,8 +911,8 @@ void MspProcessor::processCommand(MspMessage& m, MspResponse& r, Device::SerialD
         r.writeU8(_model.config.input.superRate[i]);
       }
       r.writeU8(_model.config.controller.tpaScale); // dyn thr pid
-      r.writeU8(50); // thrMid8
-      r.writeU8(0);  // thr expo
+      r.writeU8(_model.config.throttle.mid); // thrMid8
+      r.writeU8(_model.config.throttle.expo);  // thr expo
       r.writeU16(_model.config.controller.tpaBreakpoint); // tpa breakpoint
       r.writeU8(_model.config.input.expo[AXIS_YAW]); // yaw expo
       r.writeU8(_model.config.input.rate[AXIS_YAW]); // yaw rate
@@ -952,8 +952,8 @@ void MspProcessor::processCommand(MspMessage& m, MspResponse& r, Device::SerialD
           _model.config.input.superRate[i] = m.readU8();
         }
         _model.config.controller.tpaScale = Utils::clamp(m.readU8(), (uint8_t)0, (uint8_t)90); // dyn thr pid
-        m.readU8(); // thrMid8
-        m.readU8();  // thr expo
+        _model.config.throttle.mid = m.readU8(); // thrMid8
+        _model.config.throttle.expo = m.readU8();  // thr expo
         _model.config.controller.tpaBreakpoint = Utils::clamp(m.readU16(), (uint16_t)1000, (uint16_t)2000); // tpa breakpoint
         if(m.remain() >= 1)
         {

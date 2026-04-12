@@ -1,6 +1,7 @@
 #include "Control/Controller.h"
 #include "Utils/Math.hpp"
 #include <algorithm>
+#include "Controller.h"
 
 namespace Espfc::Control {
 
@@ -144,13 +145,18 @@ void FAST_CODE_ATTR Controller::outerLoop()
   _model.state.setpoint.rate[AXIS_YAW] = calculateSetpointRate(AXIS_YAW, _model.state.input.ch[AXIS_YAW]);
 
   // thrust control
+  float throttle = _model.state.input.ch[AXIS_THRUST];
+
+  // Apply Rates curve here
+  throttle = _rates.throttleCurve(throttle, _model.config.throttle);
+
   if(_model.isModeActive(MODE_ALTHOLD))
-  {
-    _model.state.setpoint.rate[AXIS_THRUST] = calcualteAltHoldSetpoint();
+  {  
+    _model.state.setpoint.rate[AXIS_THRUST] = calcualteAltHoldSetpoint(throttle);
   }
   else
   {
-    _model.state.setpoint.rate[AXIS_THRUST] = _model.state.input.ch[AXIS_THRUST];
+    _model.state.setpoint.rate[AXIS_THRUST] = throttle;
   }
 
   // debug
@@ -206,15 +212,15 @@ void FAST_CODE_ATTR Controller::innerLoop()
   }
 }
 
-float Controller::calcualteAltHoldSetpoint() const
+float Controller::calcualteAltHoldSetpoint(float thrust) const
 {
-  float thrust = _model.state.input.ch[AXIS_THRUST];
-
-  //if(_model.isThrottleLow()) thrust = 0.0f; // stick below min check, no command
-
+  // The 'thrust' passed here should already be processed by Rates::throttleCurve
+  
+  // Apply deadband to the curved value
   thrust = Utils::deadband(thrust, 0.1f); // +/- 12.5% deadband
 
-  return Utils::map3(thrust, -1.f, 0.f, 1.f, -2.0f, 0.f, 4.f); // climb rate 5ms, descend rate 2 m/s
+  // Map to climb/descend rates
+  return Utils::map3(thrust, -1.f, 0.f, 1.f, -2.0f, 0.f, 4.f); //
 }
 
 float Controller::getTpaFactor() const
