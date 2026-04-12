@@ -20,9 +20,10 @@ class Rates
 {
   public:
     void begin(const InputConfig& config);
+    float throttleCurve(float input, const ThrottleConfig &config) const;
     float getSetpoint(const int axis, float input) const;
 
-  private:
+private:
     float betaflight(const int axis, float rcCommandf, const float rcCommandfAbs) const;
     float raceflight(const int axis, float rcCommandf, const float rcCommandfAbs) const;
     float kiss(const int axis, float rcCommandf, const float rcCommandfAbs) const;

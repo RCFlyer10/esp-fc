@@ -505,6 +505,9 @@ const Cli::Param * Cli::initialize(ModelConfig& c)
     Param(PSTR("input_14"), &c.input.channel[14]),
     Param(PSTR("input_15"), &c.input.channel[15]),
 
+    Param(PSTR("throttle_mid"), &c.throttle.mid),
+    Param(PSTR("throttle_expo"), &c.throttle.expo),
+
     Param(PSTR("failsafe_delay"), &c.failsafe.delay),
     Param(PSTR("failsafe_kill_switch"), &c.failsafe.killSwitch),
 
