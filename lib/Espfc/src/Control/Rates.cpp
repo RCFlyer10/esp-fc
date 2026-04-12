@@ -18,6 +18,34 @@ void Rates::begin(const InputConfig& config)
   }
 }
 
+float FAST_CODE_ATTR Rates::throttleCurve(float input, const ThrottleConfig& config) const
+{
+  input = Utils::clamp(input, -0.995f, 0.995f);
+  float v = (input + 1.0f) * 0.5f; 
+  v = Utils::clamp(v, 0.0f, 1.0f);
+
+  if (config.expo == 0) return input; 
+  
+  float m = (float)config.mid / 100.0f;
+  float e = (float)config.expo / 100.0f;
+  
+  if (m <= 0.01f) m = 0.01f;
+  if (m >= 0.99f) m = 0.99f;
+
+  float out;
+  if (v < m) {
+    // Bottom half mirrored logic
+    float ratio = (m - v) / m;
+    out = m - m * (e * power3(ratio) + (1.0f - e) * ratio);
+  } else {
+    // Top half standard logic
+    float ratio = (v - m) / (1.0f - m);
+    out = m + (1.0f - m) * (e * power3(ratio) + (1.0f - e) * ratio);
+  }
+
+  return (out * 2.0f) - 1.0f;
+}
+
 float FAST_CODE_ATTR Rates::getSetpoint(const int axis, float input) const
 {
   input = Utils::clamp(input, -0.995f, 0.995f); // limit input

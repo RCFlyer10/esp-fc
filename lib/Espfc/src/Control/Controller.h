@@ -13,15 +13,16 @@ public:
   int begin();
   int update();
 
-  void outerLoopRobot();
-  void innerLoopRobot();
-  void outerLoop();
-  void innerLoop();
+    void outerLoopRobot();
+    void innerLoopRobot();
+    void outerLoop();
+    void innerLoop();
+    
+    inline float getTpaFactor() const;
+    inline void resetIterm();
+    float calculateSetpointRate(int axis, float input) const;
+    float calcualteAltHoldSetpoint(float thrust) const;
 
-  inline float getTpaFactor() const;
-  inline void resetIterm();
-  float calculateSetpointRate(int axis, float input) const;
-  float calcualteAltHoldSetpoint() const;
 
 private:
   void beginAltHold();
