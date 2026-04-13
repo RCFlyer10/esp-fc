@@ -11,12 +11,17 @@ enum LedType
   LED_STRIP,
 };
 
-enum LedStatus
-{
-  LED_OFF,
+enum LedStatus {
+  LED_ON,
   LED_OK,
   LED_ERROR,
-  LED_ON,
+  LED_HEARTBEAT,
+  LED_WARNING,
+  LED_INIT, 
+  LED_GYRO, 
+  LED_DOUBLE_FLASH,
+  LED_OFF,  
+  LED_STATUS_COUNT
 };
 
 class StatusLed
@@ -27,16 +32,17 @@ public:
   void begin(int8_t pin, uint8_t type, uint8_t invert);
   void update();
   void setStatus(LedStatus newStatus, bool force = false);
+  LedStatus getStatus() const { return _status; };
 
 private:
-  void _write(uint8_t val);
+  void write(uint8_t val);
   int8_t _pin;
   uint8_t _type;
   uint8_t _invert;
   LedStatus _status;
-  uint32_t _next;
-  bool _state;
+  uint32_t _next;  
   size_t _step;
+  bool _locked;
   int * _pattern;
 };
 

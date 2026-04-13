@@ -277,20 +277,24 @@ void Actuator::updateRescueConfig()
 }
 
 void Actuator::updateLed()
-{
+{   
+  Connect::LedStatus desiredStatus0 = _model.armingDisabled() ? Connect::LED_ERROR : Connect::LED_ON;
+  if (_model.state.led_0.getStatus() != desiredStatus0) {
+    _model.state.led_0.setStatus(desiredStatus0);
+  }
+
+  Connect::LedStatus desiredStatus1;  
   if(_model.isModeActive(MODE_ARMED) || _model.state.mode.isLongClickActive())
   {
-    if(_model.state.mode.isLongClickActive()) _model.setGpsHome();
-    _model.state.led.setStatus(Connect::LED_ON);
-  }
-  else if(_model.armingDisabled())
-  {
-    _model.state.led.setStatus(Connect::LED_ERROR);
+    if(_model.state.mode.isLongClickActive()) _model.setGpsHome();    
+    desiredStatus1 = _model.isModeActive(MODE_ANGLE) ? Connect::LED_ON : Connect::LED_HEARTBEAT;
   }
   else
-  {
-    _model.state.led.setStatus(Connect::LED_OK);
+  {    
+    desiredStatus1 = Connect::LED_OFF;
+  }
+  if (_model.state.led_1.getStatus() != desiredStatus1) {
+    _model.state.led_1.setStatus(desiredStatus1);
   }
 }
-
 }
