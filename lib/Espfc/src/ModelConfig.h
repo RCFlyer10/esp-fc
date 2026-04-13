@@ -260,7 +260,8 @@ enum PinFunction {
 #endif
   PIN_BUTTON,
   PIN_BUZZER,
-  PIN_LED_BLINK,
+  PIN_LED_0,
+  PIN_LED_1,
 #ifdef ESPFC_SERIAL_0
   PIN_SERIAL_0_TX,
   PIN_SERIAL_0_RX,
@@ -691,8 +692,11 @@ struct GpsConfig
 
 struct LedConfig
 {
-  uint8_t invert = 0;
-  int8_t type = 0;
+  uint8_t invert_0 = 0;
+  int8_t type_0 = 0;    
+  
+  uint8_t invert_1 = 0;
+  int8_t type_1 = 0;    
 };
 
 // persistent data
@@ -758,7 +762,8 @@ class ModelConfig
 #endif
       [PIN_BUTTON] = ESPFC_BUTTON_PIN,
       [PIN_BUZZER] = ESPFC_BUZZER_PIN,
-      [PIN_LED_BLINK] = ESPFC_LED_PIN,
+      [PIN_LED_0] = -1,
+      [PIN_LED_1] = -1,
 #ifdef ESPFC_SERIAL_0
       [PIN_SERIAL_0_TX] = ESPFC_SERIAL_0_TX,
       [PIN_SERIAL_0_RX] = ESPFC_SERIAL_0_RX,

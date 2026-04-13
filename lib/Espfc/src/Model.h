@@ -141,6 +141,7 @@ class Model
       {
         //save();
         state.buzzer.push(BUZZER_GYRO_CALIBRATED);
+        //state.led_0.setStatus(Connect::LED_GYRO);        
         logger.info().log(F("GYRO BIAS")).log(Utils::toDeg(state.gyro.bias.x)).log(Utils::toDeg(state.gyro.bias.y)).logln(Utils::toDeg(state.gyro.bias.z));
       }
       if(state.accel.calibrationState == CALIBRATION_SAVE)

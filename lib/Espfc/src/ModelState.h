@@ -505,7 +505,8 @@ struct ModelState
   int16_t debug[DEBUG_VALUE_COUNT];
 
   BuzzerState buzzer;
-  Connect::StatusLed led;
+  Connect::StatusLed led_0;
+  Connect::StatusLed led_1;
 
   BatteryState battery;
 
