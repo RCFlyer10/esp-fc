@@ -658,7 +658,8 @@ const Cli::Param * Cli::initialize(ModelConfig& c)
 #endif
     Param(PSTR("pin_button"), &c.pin[PIN_BUTTON]),
     Param(PSTR("pin_buzzer"), &c.pin[PIN_BUZZER]),
-    Param(PSTR("pin_led"), &c.pin[PIN_LED_BLINK]),
+    Param(PSTR("pin_led_0"), &c.pin[PIN_LED_0]),
+    Param(PSTR("pin_led_1"), &c.pin[PIN_LED_1]),
 #if defined(ESPFC_SERIAL_0) && defined(ESPFC_SERIAL_REMAP_PINS)
     Param(PSTR("pin_serial_0_tx"), &c.pin[PIN_SERIAL_0_TX]),
     Param(PSTR("pin_serial_0_rx"), &c.pin[PIN_SERIAL_0_RX]),
@@ -690,8 +691,10 @@ const Cli::Param * Cli::initialize(ModelConfig& c)
     Param(PSTR("pin_spi_cs_2"), &c.pin[PIN_SPI_CS2]),
 #endif
     Param(PSTR("pin_buzzer_invert"), &c.buzzer.inverted),
-    Param(PSTR("pin_led_invert"), &c.led.invert),
-    Param(PSTR("pin_led_type"), &c.led.type, ledTypeChoices),
+    Param(PSTR("pin_led_0_invert"), &c.led.invert_0),
+    Param(PSTR("pin_led_1_invert"), &c.led.invert_1),
+    Param(PSTR("pin_led_0_type"), &c.led.type_0, ledTypeChoices),
+    Param(PSTR("pin_led_1_type"), &c.led.type_1, ledTypeChoices),
     Param(PSTR("beeper_mask"), &c.buzzer.beeperMask),
 
 #ifdef ESPFC_I2C_0

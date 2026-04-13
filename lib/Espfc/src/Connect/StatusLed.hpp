@@ -11,12 +11,15 @@ enum LedType
   LED_STRIP,
 };
 
-enum LedStatus
-{
+enum LedStatus {
   LED_OFF,
-  LED_OK,
-  LED_ERROR,
   LED_ON,
+  LED_OK,
+  LED_HEARTBEAT,
+  LED_ERROR,
+  LED_INIT,  
+  LED_GYRO,  
+  LED_STATUS_COUNT
 };
 
 class StatusLed
@@ -34,8 +37,7 @@ private:
   uint8_t _type;
   uint8_t _invert;
   LedStatus _status;
-  uint32_t _next;
-  bool _state;
+  uint32_t _next;  
   size_t _step;
   int * _pattern;
 };
