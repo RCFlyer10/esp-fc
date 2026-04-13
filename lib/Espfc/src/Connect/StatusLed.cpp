@@ -8,7 +8,7 @@
 // https://docs.espressif.com/projects/esp-idf/en/v4.4.4/esp32/api-reference/peripherals/i2s.html
 // https://github.com/vunam/esp32-i2s-ws2812/blob/master/ws2812.c
 
-static constexpr size_t LED_NUMBER = 1;
+static constexpr size_t LED_NUMBER = 2;
 static constexpr size_t PIXEL_SIZE = 12; // each colour takes 4 bytes in buffer
 static constexpr size_t ZERO_BUFFER = 32;
 static constexpr size_t SIZE_BUFFER = LED_NUMBER * PIXEL_SIZE + ZERO_BUFFER;
@@ -87,20 +87,23 @@ static void ws2812_update(const ws2812_pixel_t * pixels)
   i2s_write(I2S_NUM, out_buffer, SIZE_BUFFER, &bytes_written, portMAX_DELAY);
 }
 
-static const ws2812_pixel_t PIXEL_ON[] = {{0x40, 0x40, 0x80}};
-static const ws2812_pixel_t PIXEL_OFF[] = {{0, 0, 0}};
+static const ws2812_pixel_t PIXEL_ON[] = {{0x40, 0x40, 0x80}, {0x40, 0x40, 0x80}};
+static const ws2812_pixel_t PIXEL_OFF[] = {{0, 0, 0}, {0, 0, 0}};
 
 #endif
 
 namespace Espfc::Connect
 {
 
-static int LED_OFF_PATTERN[] = {0};
+static int LED_OFF_PATTERN[] = {1, 0x7FFFFFFF, 0};
 static int LED_OK_PATTERN[] = {100, 900, 0};
+static int LED_HEARTBEAT_PATTERN[] = {50, 450, 0};
 static int LED_ERROR_PATTERN[] = {100, 100, 100, 100, 100, 1500, 0};
 static int LED_ON_PATTERN[] = {100, 0};
+static int LED_INIT_PATTERN[] = { 500, 0x7FFFFFFF, 0 };      // One long flash
+static int LED_GYRO_PATTERN[] = { 100, 100, 100, 100, 100, 100, 0x7FFFFFFF, 0 }; // Three quick blinks
 
-StatusLed::StatusLed() : _pin(-1), _invert(0), _status(LED_OFF), _next(0), _state(LOW), _step(0), _pattern(LED_OFF_PATTERN) {}
+StatusLed::StatusLed() : _pin(-1), _invert(0), _status(LED_OFF), _next(0), _step(0), _pattern(LED_OFF_PATTERN) {}
 
 void StatusLed::begin(int8_t pin, uint8_t type, uint8_t invert)
 {
@@ -124,29 +127,34 @@ void StatusLed::setStatus(LedStatus newStatus, bool force)
   if(_pin == -1) return;
   if(!force && newStatus == _status) return;
 
-  _status = newStatus;
-  _state = LOW;
+  _status = newStatus;  
   _step = 0;
   _next = millis();
 
   switch (_status)
   {
+    case LED_ON:
+      _pattern = LED_ON_PATTERN;      
+      break;    
     case LED_OK:
       _pattern = LED_OK_PATTERN;
       break;
     case LED_ERROR:
       _pattern = LED_ERROR_PATTERN;
+      break;    
+    case LED_HEARTBEAT:
+      _pattern = LED_HEARTBEAT_PATTERN;
       break;
-    case LED_ON:
-      _pattern = LED_ON_PATTERN;
-      _state = HIGH;
+    case LED_INIT:
+      _pattern = LED_INIT_PATTERN;
       break;
-    case LED_OFF:
+    case LED_GYRO:
+      _pattern = LED_GYRO_PATTERN;
+      break;
     default:
       _pattern = LED_OFF_PATTERN;
       break;
-  }
-  _write(_state);
+  }  
 }
 
 void StatusLed::update()
@@ -154,18 +162,18 @@ void StatusLed::update()
   if(_pin == -1 || !_pattern) return;
   
   uint32_t now = millis();
-  
   if(now < _next) return;
 
+  // Check if we hit the terminator (0)
   if (!_pattern[_step])
   {
-    _step = 0;
-    _next = now + 20;
-    return;
+    _step = 0; // RESET to the beginning to loop the pattern
+    // No return here—let it fall through to the logic below
   }
 
-  _state = !(_step & 1);
-  _write(_state);
+  // Even steps (0, 2, 4) = HIGH/ON
+  // Odd steps (1, 3, 5) = LOW/OFF  
+  _write(!(_step & 1));
 
   _next = now + _pattern[_step];
   _step++;
