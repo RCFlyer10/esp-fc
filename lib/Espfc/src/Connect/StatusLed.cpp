@@ -166,7 +166,6 @@ void StatusLed::update()
   if(_pin == -1 || !_pattern) return;  
   
   uint32_t now = millis();
-  
   if(now < _next) return;
 
   // Check if we hit the terminator (0)
