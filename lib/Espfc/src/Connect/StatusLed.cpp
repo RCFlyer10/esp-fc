@@ -95,15 +95,14 @@ static const ws2812_pixel_t PIXEL_OFF[] = {{0, 0, 0}, {0, 0, 0}};
 namespace Espfc::Connect
 {
 
-static int LED_OFF_PATTERN[] = {1, 0x7FFFFFFF, 0};
 static int LED_OK_PATTERN[] = {100, 900, 0};
 static int LED_HEARTBEAT_PATTERN[] = {50, 450, 0};
 static int LED_ERROR_PATTERN[] = {100, 100, 100, 100, 100, 1500, 0};
-static int LED_ON_PATTERN[] = {100, 0};
-static int LED_INIT_PATTERN[] = { 500, 0x7FFFFFFF, 0 };      // One long flash
-static int LED_GYRO_PATTERN[] = { 100, 100, 100, 100, 100, 100, 0x7FFFFFFF, 0 }; // Three quick blinks
+static int LED_INIT_PATTERN[] = { 200, 200, -1 };      // One quick flash
+static int DOUBLE_FLASH_PATTERN[] = { 200, 200, 200, 200, -1}; // Two quick flashes 
+static int LED_GYRO_PATTERN[] = { 100, 100, 100, 100, 100, 100, -1 }; // Three quick blinks
 
-StatusLed::StatusLed() : _pin(-1), _invert(0), _status(LED_OFF), _next(0), _step(0), _pattern(LED_OFF_PATTERN) {}
+StatusLed::StatusLed() : _pin(-1), _invert(0), _status(LED_OFF), _next(0), _step(0), _pattern(nullptr), _locked(false) {}
 
 void StatusLed::begin(int8_t pin, uint8_t type, uint8_t invert)
 {
@@ -125,16 +124,20 @@ void StatusLed::begin(int8_t pin, uint8_t type, uint8_t invert)
 void StatusLed::setStatus(LedStatus newStatus, bool force)
 {
   if(_pin == -1) return;
+  if(_locked && !force) return; // Prevent re-entrancy if setStatus is called again before the previous call finishes
   if(!force && newStatus == _status) return;
 
   _status = newStatus;  
   _step = 0;
   _next = millis();
 
+  _locked = (newStatus == LED_INIT || newStatus == LED_GYRO || newStatus == LED_ERROR);
+
   switch (_status)
   {
     case LED_ON:
-      _pattern = LED_ON_PATTERN;      
+      _pattern = nullptr;
+      write(1);      
       break;    
     case LED_OK:
       _pattern = LED_OK_PATTERN;
@@ -152,34 +155,43 @@ void StatusLed::setStatus(LedStatus newStatus, bool force)
       _pattern = LED_GYRO_PATTERN;
       break;
     default:
-      _pattern = LED_OFF_PATTERN;
+      _pattern = nullptr;
+      write(0);
       break;
   }  
 }
 
 void StatusLed::update()
 {
-  if(_pin == -1 || !_pattern) return;
+  if(_pin == -1 || !_pattern) return;  
   
   uint32_t now = millis();
+  
   if(now < _next) return;
 
   // Check if we hit the terminator (0)
   if (!_pattern[_step])
-  {
+  {    
     _step = 0; // RESET to the beginning to loop the pattern
     // No return here—let it fall through to the logic below
   }
 
+  else if (_pattern[_step] == -1) // STOP
+  {
+    _pattern = nullptr; // Kill the update loop
+    _locked = false;    // Release the completion lock
+    return;             // Exit immediately
+  }
+
   // Even steps (0, 2, 4) = HIGH/ON
   // Odd steps (1, 3, 5) = LOW/OFF  
-  _write(!(_step & 1));
+  write(!(_step & 1));
 
   _next = now + _pattern[_step];
   _step++;
 }
 
-void StatusLed::_write(uint8_t val)
+void StatusLed::write(uint8_t val)
 {
 #ifdef ESPFC_LED_WS2812
   if(_type == LED_STRIP) ws2812_update(val ? PIXEL_ON : PIXEL_OFF);
