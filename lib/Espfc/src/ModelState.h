@@ -295,6 +295,7 @@ struct AccelState
 
   float scale;
   VectorFloat bias;
+  VectorFloat trimOffset;
   float biasAlpha;
   int biasSamples;
   int calibrationState;
