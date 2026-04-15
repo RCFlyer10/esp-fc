@@ -103,6 +103,15 @@ static int DOUBLE_FLASH_PATTERN[] = { 200, 200, 200, 200, -1}; // Two quick flas
 static int LED_GYRO_PATTERN[] = { 100, 100, 100, 100, 100, 100, -1 }; // Three quick blinks
 
 StatusLed::StatusLed() : _pin(-1), _invert(0), _status(LED_OFF), _next(0), _step(0), _pattern(nullptr), _locked(false) {}
+static int LED_OFF_PATTERN[] = {1, 0x7FFFFFFF, 0};
+static int LED_OK_PATTERN[] = {100, 900, 0};
+static int LED_HEARTBEAT_PATTERN[] = {50, 450, 0};
+static int LED_ERROR_PATTERN[] = {100, 100, 100, 100, 100, 1500, 0};
+static int LED_ON_PATTERN[] = {100, 0};
+static int LED_INIT_PATTERN[] = { 500, 0x7FFFFFFF, 0 };      // One long flash
+static int LED_GYRO_PATTERN[] = { 100, 100, 100, 100, 100, 100, 0x7FFFFFFF, 0 }; // Three quick blinks
+
+StatusLed::StatusLed() : _pin(-1), _invert(0), _status(LED_OFF), _next(0), _step(0), _pattern(LED_OFF_PATTERN) {}
 
 void StatusLed::begin(int8_t pin, uint8_t type, uint8_t invert)
 {
@@ -138,6 +147,7 @@ void StatusLed::setStatus(LedStatus newStatus, bool force)
     case LED_ON:
       _pattern = nullptr;
       write(1);      
+      _pattern = LED_ON_PATTERN;      
       break;    
     case LED_OK:
       _pattern = LED_OK_PATTERN;
@@ -166,7 +176,6 @@ void StatusLed::update()
   if(_pin == -1 || !_pattern) return;  
   
   uint32_t now = millis();
-  
   if(now < _next) return;
 
   // Check if we hit the terminator (0)
@@ -181,11 +190,14 @@ void StatusLed::update()
     _pattern = nullptr; // Kill the update loop
     _locked = false;    // Release the completion lock
     return;             // Exit immediately
+    _step = 0; // RESET to the beginning to loop the pattern
+    // No return here—let it fall through to the logic below
   }
 
   // Even steps (0, 2, 4) = HIGH/ON
   // Odd steps (1, 3, 5) = LOW/OFF  
   write(!(_step & 1));
+  _write(!(_step & 1));
 
   _next = now + _pattern[_step];
   _step++;
