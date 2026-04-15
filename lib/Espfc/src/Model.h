@@ -428,6 +428,14 @@ class Model
         }
     }
 
+    void updateAccelTrim()
+    {
+      // 1/128 scaling matches Betaflight's sensitivity
+      const float scale = 1.0f / 128.0f;
+      state.accel.trimOffset.x = (float)config.accelTrim.roll * scale;
+      state.accel.trimOffset.y = (float)config.accelTrim.pitch * scale;
+    }
+
     void begin()
     {
       sanitize();
@@ -530,6 +538,8 @@ class Model
         state.mag.calibrationOffset.set(i, config.mag.offset[i] / 10.0f);
         state.mag.calibrationScale.set(i, config.mag.scale[i] / 1000.0f);
       }
+
+      updateAccelTrim();
     }
 
     void preSave()

@@ -73,6 +73,10 @@ int FAST_CODE_ATTR AccelSensor::filter()
 
   calibrate();
 
+  // Subtract pre-calculated software trim
+  _model.state.accel.adc.x -= _model.state.accel.trimOffset.x;
+  _model.state.accel.adc.y -= _model.state.accel.trimOffset.y;
+
   return 1;
 }
 

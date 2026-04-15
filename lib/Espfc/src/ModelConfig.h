@@ -554,6 +554,12 @@ struct RpmFilterConfig
   uint8_t fade = 30;
 };
 
+struct AccelTrim
+{
+  int16_t pitch = 0;
+  int16_t roll = 0;
+};
+
 struct VBatConfig
 {
   int16_t cellMax = 420;      
@@ -816,6 +822,7 @@ class ModelConfig
     LedConfig led;
     BuzzerConfig buzzer;
     WirelessConfig wireless;
+    AccelTrim accelTrim;
 
     // mixer and outputs
     int8_t customMixerCount = 0;

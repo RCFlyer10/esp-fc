@@ -504,8 +504,13 @@ void MspProcessor::processCommand(MspMessage& m, MspResponse& r, Device::SerialD
       break;
 
     case MSP_ACC_TRIM:
-      r.writeU16(0); // pitch
-      r.writeU16(0); // roll
+      r.writeU16(_model.config.accelTrim.pitch); // pitch
+      r.writeU16(_model.config.accelTrim.roll); // roll
+      break;
+
+    case MSP_SET_ACC_TRIM:
+      _model.config.accelTrim.pitch = m.readU16(); // pitch
+      _model.config.accelTrim.roll = m.readU16(); // roll
       break;
 
     case MSP_MIXER_CONFIG:
