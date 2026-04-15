@@ -32,13 +32,14 @@ public:
   void setStatus(LedStatus newStatus, bool force = false);
 
 private:
-  void _write(uint8_t val);
+  void write(uint8_t val);
   int8_t _pin;
   uint8_t _type;
   uint8_t _invert;
   LedStatus _status;
   uint32_t _next;  
   size_t _step;
+  bool _locked;
   int * _pattern;
 };
 
