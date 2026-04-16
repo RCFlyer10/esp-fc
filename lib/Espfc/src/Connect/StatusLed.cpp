@@ -131,8 +131,7 @@ void StatusLed::setStatus(LedStatus newStatus, bool force)
   _step = 0;
   _next = millis();
 
-  _locked = (newStatus == LED_INIT || newStatus == LED_GYRO || newStatus == LED_ERROR 
-    || newStatus == LED_ON || newStatus == LED_DOUBLE_FLASH);
+  _locked = (newStatus == LED_INIT || newStatus == LED_GYRO || newStatus == LED_DOUBLE_FLASH);
 
   switch (_status)
   {
