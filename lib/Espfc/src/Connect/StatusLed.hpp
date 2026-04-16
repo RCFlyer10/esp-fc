@@ -17,7 +17,8 @@ enum LedStatus {
   LED_OK,
   LED_HEARTBEAT,
   LED_ERROR,
-  LED_INIT,  
+  LED_INIT, 
+  LED_DOUBLE_FLASH,
   LED_GYRO,  
   LED_STATUS_COUNT
 };
@@ -38,9 +39,8 @@ private:
   uint8_t _invert;
   LedStatus _status;
   uint32_t _next;  
-  size_t _step;
-  bool _locked;
+  size_t _step;  
   int * _pattern;
+  bool _locked;
 };
-
 }

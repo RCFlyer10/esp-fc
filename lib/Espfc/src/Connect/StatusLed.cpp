@@ -103,15 +103,6 @@ static int DOUBLE_FLASH_PATTERN[] = { 200, 200, 200, 200, -1}; // Two quick flas
 static int LED_GYRO_PATTERN[] = { 100, 100, 100, 100, 100, 100, -1 }; // Three quick blinks
 
 StatusLed::StatusLed() : _pin(-1), _invert(0), _status(LED_OFF), _next(0), _step(0), _pattern(nullptr), _locked(false) {}
-static int LED_OFF_PATTERN[] = {1, 0x7FFFFFFF, 0};
-static int LED_OK_PATTERN[] = {100, 900, 0};
-static int LED_HEARTBEAT_PATTERN[] = {50, 450, 0};
-static int LED_ERROR_PATTERN[] = {100, 100, 100, 100, 100, 1500, 0};
-static int LED_ON_PATTERN[] = {100, 0};
-static int LED_INIT_PATTERN[] = { 500, 0x7FFFFFFF, 0 };      // One long flash
-static int LED_GYRO_PATTERN[] = { 100, 100, 100, 100, 100, 100, 0x7FFFFFFF, 0 }; // Three quick blinks
-
-StatusLed::StatusLed() : _pin(-1), _invert(0), _status(LED_OFF), _next(0), _step(0), _pattern(LED_OFF_PATTERN) {}
 
 void StatusLed::begin(int8_t pin, uint8_t type, uint8_t invert)
 {
@@ -140,14 +131,14 @@ void StatusLed::setStatus(LedStatus newStatus, bool force)
   _step = 0;
   _next = millis();
 
-  _locked = (newStatus == LED_INIT || newStatus == LED_GYRO || newStatus == LED_ERROR);
+  _locked = (newStatus == LED_INIT || newStatus == LED_GYRO || newStatus == LED_ERROR 
+    || newStatus == LED_ON || newStatus == LED_DOUBLE_FLASH);
 
   switch (_status)
   {
     case LED_ON:
       _pattern = nullptr;
-      write(1);      
-      _pattern = LED_ON_PATTERN;      
+      write(1);        
       break;    
     case LED_OK:
       _pattern = LED_OK_PATTERN;
@@ -160,6 +151,9 @@ void StatusLed::setStatus(LedStatus newStatus, bool force)
       break;
     case LED_INIT:
       _pattern = LED_INIT_PATTERN;
+      break;
+    case LED_DOUBLE_FLASH:
+      _pattern = DOUBLE_FLASH_PATTERN;
       break;
     case LED_GYRO:
       _pattern = LED_GYRO_PATTERN;
@@ -178,27 +172,24 @@ void StatusLed::update()
   uint32_t now = millis();
   if(now < _next) return;
 
-  // Check if we hit the terminator (0)
-  if (!_pattern[_step])
+  // 1. ADVANCE STEP FIRST (since we just finished the previous 'next' wait)
+  // But wait—we need to know if the CURRENT step is a terminator.
+  
+  if (_pattern[_step] == 0) // REPEAT
   {    
-    _step = 0; // RESET to the beginning to loop the pattern
-    // No return here—let it fall through to the logic below
+    _step = 0; 
   }
-
   else if (_pattern[_step] == -1) // STOP
   {
-    _pattern = nullptr; // Kill the update loop
-    _locked = false;    // Release the completion lock
-    return;             // Exit immediately
-    _step = 0; // RESET to the beginning to loop the pattern
-    // No return here—let it fall through to the logic below
+    _pattern = nullptr;
+    _locked = false;
+    return;   
   }
 
-  // Even steps (0, 2, 4) = HIGH/ON
-  // Odd steps (1, 3, 5) = LOW/OFF  
-  write(!(_step & 1));
-  _write(!(_step & 1));
+  // 2. Perform the write based on current step
+  write(!(_step & 1));  
 
+  // 3. Schedule the NEXT update and move the index forward
   _next = now + _pattern[_step];
   _step++;
 }
