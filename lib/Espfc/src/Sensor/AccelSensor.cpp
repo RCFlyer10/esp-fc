@@ -58,6 +58,14 @@ int FAST_CODE_ATTR AccelSensor::filter()
 
   _model.state.accel.adc = (VectorFloat)_model.state.accel.raw * _model.state.accel.scale;
 
+  // Only apply offsets (Bias AND Trim) when NOT actively calibrating
+  if(_model.state.accel.calibrationState == CALIBRATION_IDLE)
+  {
+      // Software Trim (Now axis-aware because it's before align)
+      _model.state.accel.adc.x -= _model.state.accel.trimOffset.x;
+      _model.state.accel.adc.y -= _model.state.accel.trimOffset.y;
+  }
+
   align(_model.state.accel.adc, _model.config.gyro.align);
   _model.state.accel.adc = _model.state.boardAlignment.apply(_model.state.accel.adc);
 
@@ -71,11 +79,7 @@ int FAST_CODE_ATTR AccelSensor::filter()
     _model.state.accel.adc.set(i, _model.state.accel.filter[i].update(_model.state.accel.adc[i]));
   }
 
-  calibrate();
-
-  // Subtract pre-calculated software trim
-  _model.state.accel.adc.x -= _model.state.accel.trimOffset.x;
-  _model.state.accel.adc.y -= _model.state.accel.trimOffset.y;
+  calibrate();  
 
   return 1;
 }
@@ -84,8 +88,8 @@ void FAST_CODE_ATTR AccelSensor::calibrate()
 {
   switch(_model.state.accel.calibrationState)
   {
-    case CALIBRATION_IDLE:
-      _model.state.accel.adc -= _model.state.accel.bias;
+    case CALIBRATION_IDLE:      
+      _model.state.accel.bias = _model.state.accel.adc;
       break;
     case CALIBRATION_START:
       _model.state.accel.bias = VectorFloat(0, 0, ACCEL_G);

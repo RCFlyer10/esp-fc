@@ -178,6 +178,14 @@ class Model
       return state.mode.armingDisabledFlags & flag;
     }
 
+    bool isArmingAngle() const
+    {
+      float rollTilt = fabsf(state.attitude.euler.x);
+      float pitchTilt = fabsf(state.attitude.euler.y);
+      float maxTiltRadians = (float)config.input.smallAngle * (M_PI / 180.0f); // Convert to Radians
+      return rollTilt > maxTiltRadians || pitchTilt > maxTiltRadians;
+    }
+
     void setOutputSaturated(bool val)
     {
       state.output.saturated = val;
@@ -433,8 +441,10 @@ class Model
 
     void updateAccelTrim()
     {
-      // 1/128 scaling matches Betaflight's sensitivity
-      const float scale = 1.0f / 128.0f;
+      // Betaflight expects 1 unit of trim to equal roughly 1/128th of 1G.
+      // With ACCEL_G = 9.80665, 1 unit = ~0.152 m/s^2 per click.
+      const float scale = (float)ACCEL_G / 64.0f;
+
       state.accel.trimOffset.x = (float)config.accelTrim.roll * scale;
       state.accel.trimOffset.y = (float)config.accelTrim.pitch * scale;
     }
