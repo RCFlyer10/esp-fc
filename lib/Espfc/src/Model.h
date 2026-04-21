@@ -381,12 +381,15 @@ class Model
       }
 
       // sanitize throttle and motor limits
-      if(config.output.throttleLimitType < 0 || config.output.throttleLimitType >= THROTTLE_LIMIT_TYPE_MAX) {
-        config.output.throttleLimitType = THROTTLE_LIMIT_TYPE_NONE;
+      auto& throttleConfig = config.input.rates.rateProfile[config.input.rates.activeRateProfile].throttleConfig;
+      if(throttleConfig.throttleLimitType < 0 || throttleConfig.throttleLimitType >= THROTTLE_LIMIT_TYPE_MAX) 
+      {
+        throttleConfig.throttleLimitType = THROTTLE_LIMIT_TYPE_NONE;
       }
 
-      if(config.output.throttleLimitPercent < 1 || config.output.throttleLimitPercent > 100) {
-        config.output.throttleLimitPercent = 100;
+      if(throttleConfig.throttleLimitPercent < 1 || throttleConfig.throttleLimitPercent > 100) 
+      {
+        throttleConfig.throttleLimitPercent = 100;
       }
 
       if(config.output.motorLimit < 1 || config.output.motorLimit > 100) {

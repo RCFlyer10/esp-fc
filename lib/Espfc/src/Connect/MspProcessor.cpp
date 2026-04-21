@@ -246,8 +246,8 @@ void MspProcessor::processCommand(MspMessage& m, MspResponse& r, Device::SerialD
       r.writeU8(0); // pid profile
       r.writeU16(lrintf(_model.state.stats.getCpuLoad()));
       if (m.cmd == MSP_STATUS_EX) {
-        r.writeU8(1); // max profile count
-        r.writeU8(0); // current rate profile index
+        r.writeU8(3); // max profile count
+        r.writeU8(_model.config.input.rates   .activeRateProfile); // current rate profile index
       } else {  // MSP_STATUS
         //r.writeU16(_model.state.gyro.timer.interval); // gyro cycle time
         r.writeU16(0);
@@ -906,101 +906,108 @@ void MspProcessor::processCommand(MspMessage& m, MspResponse& r, Device::SerialD
       {
         r.writeU16(lrintf(_model.state.input.us[i]));
       }
-      break;
+      break;    
+
+    case MSP_SELECT_SETTING:
+    {
+      if (m.remain() >= 1) {      
+        uint8_t rawValue = m.readU8();
+        uint8_t rateIndex = rawValue & 0x0F;
+        if (rateIndex < 3) {
+          _model.config.input.rates.activeRateProfile = rateIndex;
+        }
+      }
+    }
 
     case MSP_RC_TUNING:
-      r.writeU8(_model.config.input.rate[AXIS_ROLL]);
-      r.writeU8(_model.config.input.expo[AXIS_ROLL]);
+    {
+      const auto& p = _model.config.input.rates.rateProfile[_model.config.input.rates.activeRateProfile];
+      r.writeU8(p.rate[AXIS_ROLL]);
+      r.writeU8(p.expo[AXIS_ROLL]);
       for(size_t i = 0; i < AXIS_COUNT_RPY; i++)
       {
-        r.writeU8(_model.config.input.superRate[i]);
+        r.writeU8(p.superRate[i]);
       }
-      r.writeU8(_model.config.controller.tpaScale); // dyn thr pid
-      r.writeU8(_model.config.throttle.mid); // thrMid8
-      r.writeU8(_model.config.throttle.expo);  // thr expo
-      r.writeU16(_model.config.controller.tpaBreakpoint); // tpa breakpoint
-      r.writeU8(_model.config.input.expo[AXIS_YAW]); // yaw expo
-      r.writeU8(_model.config.input.rate[AXIS_YAW]); // yaw rate
-      r.writeU8(_model.config.input.rate[AXIS_PITCH]); // pitch rate
-      r.writeU8(_model.config.input.expo[AXIS_PITCH]); // pitch expo
+      r.writeU8(p.controllerConfig.tpaScale); // dyn thr pid
+      r.writeU8(p.throttleConfig.mid); // thrMid8
+      r.writeU8(p.throttleConfig.expo);  // thr expo
+      r.writeU16(p.controllerConfig.tpaBreakpoint); // tpa breakpoint
+      r.writeU8(p.expo[AXIS_YAW]); // yaw expo
+      r.writeU8(p.rate[AXIS_YAW]); // yaw rate
+      r.writeU8(p.rate[AXIS_PITCH]); // pitch rate
+      r.writeU8(p.expo[AXIS_PITCH]); // pitch expo
       // 1.41+
-      r.writeU8(_model.config.output.throttleLimitType); // throttle_limit_type (off)
-      r.writeU8(_model.config.output.throttleLimitPercent); // throtle_limit_percent (100%)
+      r.writeU8(p.throttleConfig.throttleLimitType); // throttle_limit_type (off)
+      r.writeU8(p.throttleConfig.throttleLimitPercent); // throtle_limit_percent (100%)
       //1.42+
-      r.writeU16(_model.config.input.rateLimit[0]); // rate limit roll
-      r.writeU16(_model.config.input.rateLimit[1]); // rate limit pitch
-      r.writeU16(_model.config.input.rateLimit[2]); // rate limit yaw
+      r.writeU16(_model.config.input.rates.rateLimit[0]); // rate limit roll
+      r.writeU16(_model.config.input.rates.rateLimit[1]); // rate limit pitch
+      r.writeU16(_model.config.input.rates.rateLimit[2]); // rate limit yaw
       // 1.43+
-      r.writeU8(_model.config.input.rateType); // rates type
-
+      r.writeU8(p.rateType); // rates type      
       break;
+    }
 
     case MSP_SET_RC_TUNING:
+    {
       if(m.remain() >= 10)
       {
-        const uint8_t rate = m.readU8();
-        if(_model.config.input.rate[AXIS_PITCH] == _model.config.input.rate[AXIS_ROLL])
-        {
-          _model.config.input.rate[AXIS_PITCH] = rate;
-        }
-        _model.config.input.rate[AXIS_ROLL] = rate;
+        auto& p = _model.config.input.rates.rateProfile[_model.config.input.rates.activeRateProfile];
 
-        const uint8_t expo = m.readU8();
-        if(_model.config.input.expo[AXIS_PITCH] == _model.config.input.expo[AXIS_ROLL])
-        {
-          _model.config.input.expo[AXIS_PITCH] = expo;
-        }
-        _model.config.input.expo[AXIS_ROLL] = expo;
+        p.rate[AXIS_ROLL] = m.readU8();
+        p.expo[AXIS_ROLL] = m.readU8();
+        for(size_t i = 0; i < AXIS_COUNT_RPY; i++) p.superRate[i] = m.readU8();
+        p.controllerConfig.tpaScale = m.readU8();
+        p.throttleConfig.mid = m.readU8(); 
+        p.throttleConfig.expo = m.readU8(); 
+        p.controllerConfig.tpaBreakpoint = m.readU16();
 
-        for(size_t i = 0; i < AXIS_COUNT_RPY; i++)
-        {
-          _model.config.input.superRate[i] = m.readU8();
+        // BF 4.x / Configurator 10.9+ additions
+        if(m.remain() >= 1) p.expo[AXIS_YAW] = m.readU8();
+        if(m.remain() >= 1) p.rate[AXIS_YAW] = m.readU8();
+        if(m.remain() >= 1) p.rate[AXIS_PITCH] = m.readU8();
+        if(m.remain() >= 1) p.expo[AXIS_PITCH] = m.readU8();
+        
+        // These are the "hidden" bytes that were causing your offset error:
+        if(m.remain() >= 2) { 
+          p.throttleConfig.throttleLimitType = m.readU8(); 
+          p.throttleConfig.throttleLimitPercent = m.readU8(); 
         }
-        _model.config.controller.tpaScale = Utils::clamp(m.readU8(), (uint8_t)0, (uint8_t)90); // dyn thr pid
-        _model.config.throttle.mid = m.readU8(); // thrMid8
-        _model.config.throttle.expo = m.readU8();  // thr expo
-        _model.config.controller.tpaBreakpoint = Utils::clamp(m.readU16(), (uint16_t)1000, (uint16_t)2000); // tpa breakpoint
-        if(m.remain() >= 1)
-        {
-          _model.config.input.expo[AXIS_YAW] = m.readU8(); // yaw expo
-        }
-        if(m.remain() >= 1)
-        {
-          _model.config.input.rate[AXIS_YAW]  = m.readU8(); // yaw rate
-        }
-        if(m.remain() >= 1)
-        {
-          _model.config.input.rate[AXIS_PITCH] = m.readU8(); // pitch rate
-        }
-        if(m.remain() >= 1)
-        {
-          _model.config.input.expo[AXIS_PITCH]  = m.readU8(); // pitch expo
-        }
-        // 1.41
-        if(m.remain() >= 2)
-        {
-          _model.config.output.throttleLimitType = m.readU8(); // throttle_limit_type
-          _model.config.output.throttleLimitPercent = m.readU8(); // throttle_limit_percent
-        }
-        // 1.42
-        if(m.remain() >= 6)
-        {
-          _model.config.input.rateLimit[0] = m.readU16(); // roll
-          _model.config.input.rateLimit[1] = m.readU16(); // pitch
-          _model.config.input.rateLimit[2] = m.readU16(); // yaw
-        }
-        // 1.43
-        if (m.remain() >= 1)
-        {
-          _model.config.input.rateType = m.readU8();
-        }
+        if(m.remain() >= 6) { m.advance(6); } // Skip Rate Limits (Roll, Pitch, Yaw)
+        if(m.remain() >= 1) { p.rateType = m.readU8(); }  
+        _model.save(); // save after updating the rate profile, so that changes are not lost when switching profiles in the UI      
       }
-      else
+    }
+    break;
+
+    case MSP_ADJUSTMENT_RANGES:
+      for (uint8_t i = 0; i < 3; i++) 
       {
-        r.result = -1;
-        // error
+        const auto& adj = _model.config.adjustmentRanges[i];
+        r.writeU8(adj.enabled); 
+        r.writeU8(adj.rangeChannel);
+        r.writeU8(adj.startRange);
+        r.writeU8(adj.endRange);
+        r.writeU8(adj.function);
+        r.writeU8(adj.adjustChannel);
+      }
+    break;
+
+    case MSP_SET_ADJUSTMENT_RANGE:
+    { 
+      uint8_t idx = m.readU8(); 
+      if (idx < 3) 
+      {           
+        auto& adj = _model.config.adjustmentRanges[idx];       
+        adj.enabled = m.readU8();      
+        adj.rangeChannel = m.readU8(); 
+        adj.startRange = m.readU8(); 
+        adj.endRange = m.readU8();        
+        adj.function = m.readU8(); 
+        adj.adjustChannel = m.readU8();           
       }
       break;
+    }
 
     case MSP_ADVANCED_CONFIG:
       r.writeU8(1); // gyroSync unused
