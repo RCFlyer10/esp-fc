@@ -31,6 +31,8 @@ int FAST_CODE_ATTR Controller::update()
     _model.state.debug[0] = startTime - _model.state.loopTimer.last;
   }
 
+  processStickCommands();
+
   {
     Utils::Stats::Measure(_model.state.stats, COUNTER_OUTER_PID);
     resetIterm();
@@ -332,4 +334,68 @@ void Controller::beginAltHold()
   pid.begin();
 }
 
+void Controller::processStickCommands()
+{
+  if(_model.isModeActive(MODE_ARMED)) return;  
+  
+  if(_model.isModeActive(MODE_ANGLE))
+  {     
+    if(!_trimming)
+    {
+      if(_model.state.input.us[AXIS_THRUST] >= _model.config.input.maxCheck)
+      {               
+        if(_model.state.input.us[AXIS_ROLL] >= _model.config.input.maxCheck)
+        {
+          _model.config.accelTrim.roll += 1;
+          _trimming = true;
+        }
+        else if(_model.state.input.us[AXIS_ROLL] <= _model.config.input.minCheck)
+        {
+          _model.config.accelTrim.roll -= 1;
+          _trimming = true;          
+        }
+        else if(_model.state.input.us[AXIS_PITCH] >= _model.config.input.maxCheck)
+        {
+          _model.config.accelTrim.pitch += 1;
+          _trimming = true;          
+        }
+        else if(_model.state.input.us[AXIS_PITCH] <= _model.config.input.minCheck)
+        {
+          _model.config.accelTrim.pitch -= 1;
+          _trimming = true;          
+        }        
+      }
+    }
+    else if(_model.state.input.us[AXIS_THRUST] <= _model.config.input.minCheck)
+    { 
+      if(_model.state.input.us[AXIS_ROLL] > _model.config.input.minCheck && _model.state.input.us[AXIS_ROLL] < _model.config.input.maxCheck
+        && _model.state.input.us[AXIS_PITCH] > _model.config.input.minCheck && _model.state.input.us[AXIS_PITCH] < _model.config.input.maxCheck)
+      {
+        _model.updateAccelTrim();
+        _model.state.led_1.setStatus(Connect::LED_INIT);
+        _trimming = false;
+        _saveRequested = true;
+      }
+    }
+    if(_saveRequested && _model.state.input.us[AXIS_THRUST] <= _model.config.input.minCheck 
+      && _model.state.input.us[AXIS_PITCH] <= _model.config.input.minCheck)
+    { 
+      if(_model.state.input.us[AXIS_ROLL] >= _model.config.input.maxCheck && _model.state.input.us[AXIS_YAW] <= _model.config.input.minCheck)
+      {
+        _model.save();
+        _model.state.led_1.setStatus(Connect::LED_DOUBLE_FLASH);
+        _saveRequested = false;
+      }
+    }
+  }
+  else if(_model.state.input.us[AXIS_THRUST] >= _model.config.input.maxCheck && _model.state.input.us[AXIS_YAW] <= _model.config.input.minCheck
+    && _model.state.input.us[AXIS_PITCH] <= _model.config.input.minCheck)
+  {
+    _model.calibrateGyro();    
+  }
+  /* else if(_model.state.input.us[AXIS_THRUST] >= _model.config.input.maxCheck && _model.state.input.us[AXIS_YAW] >= _model.config.input.maxCheck)
+  {
+    _model.calibrateMag();
+  } */
+}
 }

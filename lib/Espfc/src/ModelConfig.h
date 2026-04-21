@@ -421,6 +421,7 @@ struct InputConfig
   int16_t minRc = 885;
   int16_t midRc = 1500;
   int16_t maxRc = 2115;
+  int16_t smallAngle = 25; // Standard range is 0-180
 
   int8_t interpolationMode = INPUT_INTERPOLATION_AUTO;
   int8_t interpolationInterval = 26;
