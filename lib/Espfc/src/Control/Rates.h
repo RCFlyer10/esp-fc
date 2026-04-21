@@ -19,10 +19,9 @@ namespace Control {
 class Rates
 {
   public:
-    void begin(InputConfig& config);
+    void begin(const InputConfig& config);
     float throttleCurve(float input, const ThrottleConfig &config) const;
     float getSetpoint(const int axis, float input) const;
-    void updateRateProfile(InputConfig &config);
 
 private:
     float betaflight(const int axis, float rcCommandf, const float rcCommandfAbs) const;
@@ -30,7 +29,6 @@ private:
     float kiss(const int axis, float rcCommandf, const float rcCommandfAbs) const;
     float actual(const int axis, float rcCommandf, const float rcCommandfAbs) const;
     float quick(const int axis, float rcCommandf, const float rcCommandfAbs) const;
-    
 
     inline float power3(float x) const
     {

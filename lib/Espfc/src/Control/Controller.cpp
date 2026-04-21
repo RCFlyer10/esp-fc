@@ -24,11 +24,6 @@ int Controller::begin()
 
 int FAST_CODE_ATTR Controller::update()
 {
-  if(_model.config.input.rates.updateAvailable)
-  {
-    _rates.updateRateProfile(_model.config.input);
-  }
-  
   uint32_t startTime = 0;
   if(_model.config.debug.mode == DEBUG_PIDLOOP)
   {
@@ -155,7 +150,7 @@ void FAST_CODE_ATTR Controller::outerLoop()
   float throttle = _model.state.input.ch[AXIS_THRUST];
 
   // Apply Rates curve here
-  throttle = _rates.throttleCurve(throttle, _model.config.input.rates.rateProfile[_model.config.input.rates.activeRateProfile].throttleConfig);
+  throttle = _rates.throttleCurve(throttle, _model.config.throttle);
 
   if(_model.isModeActive(MODE_ALTHOLD))
   {  
@@ -232,10 +227,9 @@ float Controller::calcualteAltHoldSetpoint(float thrust) const
 
 float Controller::getTpaFactor() const
 {
-  const auto& controllerConfig = _model.config.input.rates.rateProfile[_model.config.input.rates.activeRateProfile].controllerConfig;
-  if(controllerConfig.tpaScale == 0) return 1.f;
-  float t = Utils::clamp(_model.state.input.us[AXIS_THRUST], (float)controllerConfig.tpaBreakpoint, 2000.f);
-  return Utils::map(t, (float)controllerConfig.tpaBreakpoint, 2000.f, 1.f, 1.f - ((float)controllerConfig.tpaScale * 0.01f));
+  if(_model.config.controller.tpaScale == 0) return 1.f;
+  float t = Utils::clamp(_model.state.input.us[AXIS_THRUST], (float)_model.config.controller.tpaBreakpoint, 2000.f);
+  return Utils::map(t, (float)_model.config.controller.tpaBreakpoint, 2000.f, 1.f, 1.f - ((float)_model.config.controller.tpaScale * 0.01f));
 }
 
 void Controller::resetIterm()

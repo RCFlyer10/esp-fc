@@ -6,9 +6,16 @@ namespace Espfc::Control {
 constexpr float SETPOINT_RATE_LIMIT = 1998.0f;
 constexpr float RC_RATE_INCREMENTAL = 14.54f;
 
-void Rates::begin(InputConfig& config)
+void Rates::begin(const InputConfig& config)
 {
-  updateRateProfile(config);  
+  rateType = (RateType)config.rateType;
+  for(size_t i = 0; i < 3; i++)
+  {
+    rcExpo[i] = config.expo[i];
+    rcRates[i] = config.rate[i];
+    rates[i] = config.superRate[i];
+    rateLimit[i] = config.rateLimit[i];
+  }
 }
 
 float FAST_CODE_ATTR Rates::throttleCurve(float input, const ThrottleConfig& config) const
@@ -129,26 +136,6 @@ float FAST_CODE_ATTR Rates::quick(const int axis, float rcCommandf, const float 
   float angleRate = constrainf(rcCommandf * rcRate * superfactor, -SETPOINT_RATE_LIMIT, SETPOINT_RATE_LIMIT);
 
   return angleRate;
-}
-
-void Rates::updateRateProfile(InputConfig& config)
-{
-    uint8_t profileIndex = config.rates.activeRateProfile;
-    if (profileIndex >= 3) profileIndex = 0;
-
-    RateProfile& rp = config.rates.rateProfile[profileIndex];
-
-    rateType = (RateType)rp.rateType;
-
-    for(size_t i = 0; i < 3; i++)
-    {
-        rcExpo[i]   = rp.expo[i];           
-        rcRates[i]  = rp.rate[i];
-        rates[i]    = rp.superRate[i];
-        rateLimit[i] = config.rates.rateLimit[i];
-    }
-    
-    config.rates.updateAvailable = false;
 }
 
 }

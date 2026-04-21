@@ -357,7 +357,6 @@ const Cli::Param * Cli::initialize(ModelConfig& c)
   static const char* blackboxDevChoices[] = { PSTR("NONE"), PSTR("FLASH"), PSTR("SD_CARD"), PSTR("SERIAL"), NULL };
   static const char* blackboxModeChoices[] = { PSTR("NORMAL"), PSTR("TEST"), PSTR("ALWAYS"), NULL };
   static const char* ledTypeChoices[] = { PSTR("SIMPLE"), PSTR("STRIP"), NULL };
-  static const char* activeRateProfileChoices[] = { PSTR("LOW"), PSTR("MID"), PSTR("HIGH"), NULL };
 
   size_t i = 0;
   static const Param params[] = {
@@ -466,72 +465,22 @@ const Cli::Param * Cli::initialize(ModelConfig& c)
     Param(PSTR("fusion_gain_p"), &c.fusion.gain),
     Param(PSTR("fusion_gain_i"), &c.fusion.gainI),
 
-    Param(PSTR("active_rate_profile"), &c.input.rates.activeRateProfile, activeRateProfileChoices),
+    Param(PSTR("input_rate_type"), &c.input.rateType, inputRateTypeChoices),
 
-    Param(PSTR("rate_profile_low_rate_type"), &c.input.rates.rateProfile[0].rateType, inputRateTypeChoices),
-    Param(PSTR("rate_profile_mid_rate_type"), &c.input.rates.rateProfile[1].rateType, inputRateTypeChoices),
-    Param(PSTR("rate_profile_high_rate_type"), &c.input.rates.rateProfile[2].rateType, inputRateTypeChoices),
+    Param(PSTR("input_roll_rate"), &c.input.rate[0]),
+    Param(PSTR("input_roll_srate"), &c.input.superRate[0]),
+    Param(PSTR("input_roll_expo"), &c.input.expo[0]),
+    Param(PSTR("input_roll_limit"), &c.input.rateLimit[0]),
 
-    Param(PSTR("rate_profile_low_roll_rate"), &c.input.rates.rateProfile[0].rate[AXIS_ROLL]),
-    Param(PSTR("rate_profile_low_roll_srate"), &c.input.rates.rateProfile[0].superRate[AXIS_ROLL]),
-    Param(PSTR("rate_profile_low_roll_expo"), &c.input.rates.rateProfile[0].expo[AXIS_ROLL]),    
+    Param(PSTR("input_pitch_rate"), &c.input.rate[1]),
+    Param(PSTR("input_pitch_srate"), &c.input.superRate[1]),
+    Param(PSTR("input_pitch_expo"), &c.input.expo[1]),
+    Param(PSTR("input_pitch_limit"), &c.input.rateLimit[1]),
 
-    Param(PSTR("rate_profile_mid_roll_rate"), &c.input.rates.rateProfile[1].rate[AXIS_ROLL]),
-    Param(PSTR("rate_profile_mid_roll_srate"), &c.input.rates.rateProfile[1].superRate[AXIS_ROLL]),
-    Param(PSTR("rate_profile_mid_roll_expo"), &c.input.rates.rateProfile[1].expo[AXIS_ROLL]),
-
-    Param(PSTR("rate_profile_high_roll_rate"), &c.input.rates.rateProfile[2].rate[AXIS_ROLL]),
-    Param(PSTR("rate_profile_high_roll_srate"), &c.input.rates.rateProfile[2].superRate[AXIS_ROLL]),
-    Param(PSTR("rate_profile_high_roll_expo"), &c.input.rates.rateProfile[2].expo[AXIS_ROLL]),
-    Param(PSTR("rate_roll_limit"), &c.input.rates.rateLimit[AXIS_ROLL]),
-
-    Param(PSTR("rate_profile_low_pitch_rate"), &c.input.rates.rateProfile[0].rate[AXIS_PITCH]),
-    Param(PSTR("rate_profile_low_pitch_srate"), &c.input.rates.rateProfile[0].superRate[AXIS_PITCH]),
-    Param(PSTR("rate_profile_low_pitch_expo"), &c.input.rates.rateProfile[0].expo[AXIS_PITCH]),
-    
-    Param(PSTR("rate_profile_mid_pitch_rate"), &c.input.rates.rateProfile[1].rate[AXIS_PITCH]),
-    Param(PSTR("rate_profile_mid_pitch_srate"), &c.input.rates.rateProfile[1].superRate[AXIS_PITCH]),
-    Param(PSTR("rate_profile_mid_pitch_expo"), &c.input.rates.rateProfile[1].expo[AXIS_PITCH]),    
-
-    Param(PSTR("rate_profile_high_pitch_rate"), &c.input.rates.rateProfile[2].rate[AXIS_PITCH]),
-    Param(PSTR("rate_profile_high_pitch_srate"), &c.input.rates.rateProfile[2].superRate[AXIS_PITCH]),
-    Param(PSTR("rate_profile_high_pitch_expo"), &c.input.rates.rateProfile[2].expo[AXIS_PITCH]),
-    Param(PSTR("rate_pitch_limit"), &c.input.rates.rateLimit[AXIS_PITCH]),    
-
-    Param(PSTR("rate_profile_low_yaw_rate"), &c.input.rates.rateProfile[0].rate[AXIS_YAW]),
-    Param(PSTR("rate_profile_low_yaw_srate"), &c.input.rates.rateProfile[0].superRate[AXIS_YAW]),
-    Param(PSTR("rate_profile_low_yaw_expo"), &c.input.rates.rateProfile[0].expo[AXIS_YAW]),     
-    
-    Param(PSTR("rate_profile_mid_yaw_rate"), &c.input.rates.rateProfile[1].rate[AXIS_YAW]),
-    Param(PSTR("rate_profile_mid_yaw_srate"), &c.input.rates.rateProfile[1].superRate[AXIS_YAW]),
-    Param(PSTR("rate_profile_mid_yaw_expo"), &c.input.rates.rateProfile[1].expo[AXIS_YAW]),
-
-    Param(PSTR("rate_profile_high_yaw_rate"), &c.input.rates.rateProfile[2].rate[AXIS_YAW]),
-    Param(PSTR("rate_profile_high_yaw_srate"), &c.input.rates.rateProfile[2].superRate[AXIS_YAW]),
-    Param(PSTR("rate_profile_high_yaw_expo"), &c.input.rates.rateProfile[2].expo[AXIS_YAW]),
-    Param(PSTR("rate_yaw_limit"), &c.input.rates.rateLimit[AXIS_YAW]),
-    
-    Param(PSTR("rate_profile_low_throttle_mid"), &c.input.rates.rateProfile[0].throttleConfig.mid),
-    Param(PSTR("rate_profile_low_throttle_expo"), &c.input.rates.rateProfile[0].throttleConfig.expo),
-    Param(PSTR("rate_profile_low_throttle_limit_type"), &c.input.rates.rateProfile[0].throttleConfig.throttleLimitType, throtleLimitTypeChoices),
-    Param(PSTR("rate_profile_low_throttle_limit"), &c.input.rates.rateProfile[0].throttleConfig.throttleLimitPercent),
-    
-    Param(PSTR("rate_profile_mid_throttle_mid"), &c.input.rates.rateProfile[1].throttleConfig.mid),
-    Param(PSTR("rate_profile_mid_throttle_expo"), &c.input.rates.rateProfile[1].throttleConfig.expo),
-    Param(PSTR("rate_profile_mid_throttle_limit_type"), &c.input.rates.rateProfile[1].throttleConfig.throttleLimitType, throtleLimitTypeChoices),
-    Param(PSTR("rate_profile_mid_throttle_limit"), &c.input.rates.rateProfile[1].throttleConfig.throttleLimitPercent),
-
-    Param(PSTR("rate_profile_high_throttle_mid"), &c.input.rates.rateProfile[2].throttleConfig.mid),
-    Param(PSTR("rate_profile_high_throttle_expo"), &c.input.rates.rateProfile[2].throttleConfig.expo),
-    Param(PSTR("rate_profile_high_throttle_limit_type"), &c.input.rates.rateProfile[2].throttleConfig.throttleLimitType, throtleLimitTypeChoices),
-    Param(PSTR("rate_profile_high_throttle_limit"), &c.input.rates.rateProfile[2].throttleConfig.throttleLimitPercent),
-
-    Param(PSTR("rate_profile_low_tpa_scale"), &c.input.rates.rateProfile[0].controllerConfig.tpaScale),
-    Param(PSTR("rate_profile_low_tpa_breakpoint"), &c.input.rates.rateProfile[0].controllerConfig.tpaBreakpoint),
-    Param(PSTR("rate_profile_mid_tpa_scale"), &c.input.rates.rateProfile[1].controllerConfig.tpaScale),
-    Param(PSTR("rate_profile_mid_tpa_breakpoint"), &c.input.rates.rateProfile[1].controllerConfig.tpaBreakpoint),
-    Param(PSTR("rate_profile_high_tpa_scale"), &c.input.rates.rateProfile[2].controllerConfig.tpaScale),
-    Param(PSTR("rate_profile_high_tpa_breakpoint"), &c.input.rates.rateProfile[2].controllerConfig.tpaBreakpoint),
+    Param(PSTR("input_yaw_rate"), &c.input.rate[2]),
+    Param(PSTR("input_yaw_srate"), &c.input.superRate[2]),
+    Param(PSTR("input_yaw_expo"), &c.input.expo[2]),
+    Param(PSTR("input_yaw_limit"), &c.input.rateLimit[2]),
 
     Param(PSTR("input_deadband"), &c.input.deadband),
 
@@ -569,7 +518,10 @@ const Cli::Param * Cli::initialize(ModelConfig& c)
     Param(PSTR("input_12"), &c.input.channel[12]),
     Param(PSTR("input_13"), &c.input.channel[13]),
     Param(PSTR("input_14"), &c.input.channel[14]),
-    Param(PSTR("input_15"), &c.input.channel[15]),    
+    Param(PSTR("input_15"), &c.input.channel[15]),
+
+    Param(PSTR("throttle_mid"), &c.throttle.mid),
+    Param(PSTR("throttle_expo"), &c.throttle.expo),
 
     Param(PSTR("failsafe_delay"), &c.failsafe.delay),
     Param(PSTR("failsafe_kill_switch"), &c.failsafe.killSwitch),
@@ -659,10 +611,14 @@ const Cli::Param * Cli::initialize(ModelConfig& c)
     Param(PSTR("pid_iterm_zero"), &c.iterm.lowThrottleZeroIterm),
     Param(PSTR("pid_iterm_relax"), &c.iterm.relax, inputItermRelaxChoices),
     Param(PSTR("pid_iterm_relax_cutoff"), &c.iterm.relaxCutoff),
-    
+    Param(PSTR("pid_tpa_scale"), &c.controller.tpaScale),
+    Param(PSTR("pid_tpa_breakpoint"), &c.controller.tpaBreakpoint),
+
     Param(PSTR("mixer_sync"), &c.mixerSync),
     Param(PSTR("mixer_type"), &c.mixer.type, mixerTypeChoices),
-    Param(PSTR("mixer_yaw_reverse"), &c.mixer.yawReverse),    
+    Param(PSTR("mixer_yaw_reverse"), &c.mixer.yawReverse),
+    Param(PSTR("mixer_throttle_limit_type"), &c.output.throttleLimitType, throtleLimitTypeChoices),
+    Param(PSTR("mixer_throttle_limit_percent"), &c.output.throttleLimitPercent),
     Param(PSTR("mixer_output_limit"), &c.output.motorLimit),
 
     Param(PSTR("output_motor_protocol"), &c.output.protocol, protocolChoices),
@@ -855,11 +811,6 @@ const Cli::Param * Cli::initialize(ModelConfig& c)
     Param(PSTR("mix_61"), &c.customMixes[i++]),
     Param(PSTR("mix_62"), &c.customMixes[i++]),
     Param(PSTR("mix_63"), &c.customMixes[i++]),
-
-    /* Param(PSTR("adjrange_0"), &c.adjustmentRanges[0]),
-    Param(PSTR("adjrange_1"), &c.adjustmentRanges[1]),
-    Param(PSTR("adjrange_2"), &c.adjustmentRanges[2]), */
-    
 
     Param() // terminate
   };
