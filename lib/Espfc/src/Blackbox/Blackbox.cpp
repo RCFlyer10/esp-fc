@@ -41,18 +41,20 @@ int Blackbox::begin()
   systemConfigMutable()->debug_mode = debugMode = _model.config.debug.mode;
 
   controlRateConfig_t *rp = controlRateProfilesMutable(systemConfig()->activeRateProfile);
+  const auto& p = _model.config.input.rates.rateProfile[_model.config.input.rates.activeRateProfile];
   for(int i = 0; i < AXIS_COUNT_RPY; i++)
-  {
-    rp->rcRates[i] = _model.config.input.rate[i];
-    rp->rcExpo[i] = _model.config.input.expo[i];
-    rp->rates[i] = _model.config.input.superRate[i];
-    rp->rate_limit[i] = _model.config.input.rateLimit[i];
+  {    
+    rp->rcRates[i] = p.rate[i];
+    rp->rcExpo[i] = p.expo[i];
+    rp->rates[i] = p.superRate[i];
+    rp->rate_limit[i] = _model.config.input.rates.rateLimit[i];
   }
-  rp->thrMid8 = 50;
-  rp->thrExpo8 = 0;
-  rp->dynThrPID = _model.config.controller.tpaScale;
-  rp->tpa_breakpoint = _model.config.controller.tpaBreakpoint;
-  rp->rates_type = _model.config.input.rateType;
+  
+  rp->thrMid8 = p.throttleConfig.mid;
+  rp->thrExpo8 = p.throttleConfig.expo ;
+  rp->dynThrPID = p.controllerConfig.tpaScale;
+  rp->tpa_breakpoint = p.controllerConfig.tpaBreakpoint;
+  rp->rates_type = p.rateType;
 
   pidProfile_s * cp = currentPidProfile = &_pidProfile;
   for(size_t i = 0; i < FC_PID_ITEM_COUNT; i++)
@@ -82,8 +84,8 @@ int Blackbox::begin()
   cp->ff_boost = 0;
   cp->feedForwardTransition = 0;
   cp->tpa_mode = 0; // PD
-  cp->tpa_rate = _model.config.controller.tpaScale;
-  cp->tpa_breakpoint = _model.config.controller.tpaBreakpoint;
+  cp->tpa_rate =  p.controllerConfig.tpaScale;
+  cp->tpa_breakpoint = p.controllerConfig.tpaBreakpoint;
   cp->motor_output_limit = _model.config.output.motorLimit;
   cp->throttle_boost = 0;
   cp->throttle_boost_cutoff = 100;
