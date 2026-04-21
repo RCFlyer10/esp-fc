@@ -487,6 +487,9 @@ const Cli::Param * Cli::initialize(ModelConfig& c)
     Param(PSTR("input_min"), &c.input.minRc),
     Param(PSTR("input_mid"), &c.input.midRc),
     Param(PSTR("input_max"), &c.input.maxRc),
+    Param(PSTR("input_min_check"), &c.input.minCheck),
+    Param(PSTR("input_max_check"), &c.input.maxCheck),
+    Param(PSTR("input_small_angle"), &c.input.smallAngle),
 
     Param(PSTR("input_interpolation"), &c.input.interpolationMode, interpolChoices),
     Param(PSTR("input_interpolation_interval"), &c.input.interpolationInterval),
@@ -1299,7 +1302,8 @@ void Cli::execute(CliCmd& cmd, Stream& s)
     s.print(F("   arm flags:"));
     for(size_t i = 0; i < armingDisableNamesLength; i++)
     {
-      if(_model.state.mode.armingDisabledFlags & (1 << i)) {
+      // Use 1UL to ensure 32-bit unsigned shift
+      if(_model.state.mode.armingDisabledFlags & (1UL << i)) {
         s.print(' ');
         s.print(armingDisableNames[i]);
       }

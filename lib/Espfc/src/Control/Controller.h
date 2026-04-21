@@ -17,7 +17,7 @@ class Controller
     void innerLoopRobot();
     void outerLoop();
     void innerLoop();
-    
+    void processStickCommands();
     inline float getTpaFactor() const;
     inline void resetIterm();
     float calculateSetpointRate(int axis, float input) const;
@@ -32,6 +32,8 @@ class Controller
     Model& _model;
     Rates _rates;
     Utils::Filter _speedFilter;
+    bool _trimming = false;
+    bool _saveRequested = false;
 };
 
 }
