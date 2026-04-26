@@ -71,11 +71,7 @@ int FAST_CODE_ATTR AccelSensor::filter()
     _model.state.accel.adc.set(i, _model.state.accel.filter[i].update(_model.state.accel.adc[i]));
   }
 
-  calibrate();
-
-  // Subtract pre-calculated software trim
-  _model.state.accel.adc.x -= _model.state.accel.trimOffset.x;
-  _model.state.accel.adc.y -= _model.state.accel.trimOffset.y;
+  calibrate();  
 
   return 1;
 }
@@ -86,6 +82,8 @@ void FAST_CODE_ATTR AccelSensor::calibrate()
   {
     case CALIBRATION_IDLE:
       _model.state.accel.adc -= _model.state.accel.bias;
+      _model.state.accel.adc.x -= _model.state.accel.trimOffset.x;
+      _model.state.accel.adc.y -= _model.state.accel.trimOffset.y;
       break;
     case CALIBRATION_START:
       _model.state.accel.bias = VectorFloat(0, 0, ACCEL_G);

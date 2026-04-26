@@ -430,10 +430,16 @@ class Model
 
     void updateAccelTrim()
     {
-      // 1/128 scaling matches Betaflight's sensitivity
-      const float scale = 1.0f / 128.0f;
-      state.accel.trimOffset.x = (float)config.accelTrim.roll * scale;
-      state.accel.trimOffset.y = (float)config.accelTrim.pitch * scale;
+      const float scale = (float)ACCEL_G / 128.0f;
+      float logicalRoll = (float)config.accelTrim.roll * scale;
+      float logicalPitch = (float)config.accelTrim.pitch * scale;
+
+      // The accel trim offsets are rotated 90 degrees relative to the sensor's physical orientation
+      // so logical roll affects physical Y and logical pitch affects physical X.      
+      state.accel.trimOffset.x = -logicalPitch;
+      state.accel.trimOffset.y = logicalRoll;       
+      
+      state.accel.trimOffset.z = 0.0f; 
     }
 
     void begin()
@@ -526,6 +532,8 @@ class Model
 
       // override temporary
       //state.telemetryTimer.setRate(100);
+
+      updateAccelTrim();
     }
 
     void postLoad()
@@ -537,9 +545,7 @@ class Model
         state.accel.bias.set(i, config.accel.bias[i] / 1000.0f);
         state.mag.calibrationOffset.set(i, config.mag.offset[i] / 10.0f);
         state.mag.calibrationScale.set(i, config.mag.scale[i] / 1000.0f);
-      }
-
-      updateAccelTrim();
+      }      
     }
 
     void preSave()
