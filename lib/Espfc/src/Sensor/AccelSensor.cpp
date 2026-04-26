@@ -88,8 +88,10 @@ void FAST_CODE_ATTR AccelSensor::calibrate()
 {
   switch(_model.state.accel.calibrationState)
   {
-    case CALIBRATION_IDLE:      
-      _model.state.accel.bias = _model.state.accel.adc;
+    case CALIBRATION_IDLE:
+      _model.state.accel.adc -= _model.state.accel.bias;
+      _model.state.accel.adc.x -= _model.state.accel.trimOffset.x;
+      _model.state.accel.adc.y -= _model.state.accel.trimOffset.y;
       break;
     case CALIBRATION_START:
       _model.state.accel.bias = VectorFloat(0, 0, ACCEL_G);

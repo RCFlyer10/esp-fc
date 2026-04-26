@@ -604,6 +604,11 @@ struct IBatConfig
   int16_t offset = 0;
 };
 
+struct ThrottleConfig {
+    uint8_t mid = 50;   // Range 0-100 (Default 50)
+    uint8_t expo = 0;   // Range 0-100 (Default 0)
+};
+
 struct GyroConfig
 {
   int8_t bus = BUS_AUTO;
@@ -779,8 +784,9 @@ class ModelConfig
     FusionConfig fusion;
     VBatConfig vbat;
     IBatConfig ibat;
-    VtxConfig vtx;    
-    GpsConfig gps;    
+    VtxConfig vtx;
+    ThrottleConfig throttle;
+    GpsConfig gps;
 
     ActuatorCondition conditions[ACTUATOR_CONDITIONS];
     ScalerConfig scaler[SCALER_COUNT];
