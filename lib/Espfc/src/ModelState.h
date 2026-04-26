@@ -349,6 +349,7 @@ enum GpsDeviceVersion
   GPS_M8,
   GPS_M9,
   GPS_F9,
+  GPS_M10,
 };
 
 struct GpsSupportState
@@ -358,6 +359,8 @@ struct GpsSupportState
   bool galileo = false;
   bool beidou = false;
   bool sbas = false;
+  bool qzss = false;
+  bool dualBand = false;
 };
 
 template<typename T>
@@ -461,6 +464,9 @@ struct GpsState
   GpsAccuracy accuracy;
   GpsDateTime dateTime;
   GpsSatelite svinfo[SAT_MAX];
+  uint16_t distanceToHome = 0;
+  int16_t directionToHome = 0;
+  bool isHomeValid() const { return homeSet && fix && fixType >= 2; }
 };
 
 // runtime data

@@ -1,6 +1,6 @@
 # ESP-FC wiring examples and PIN mapping
 
-ESP32 MCUs allows to remap pins, so the wiring is not final and you can remap intputs and outputs to your needs. To change pin function go to the CLI and use `get pin` command to check current assignment. For example, to set first output to pin 1 use command 
+ESP32 MCUs allows to remap pins, so the wiring is not final and you can remap intputs and outputs to your needs. To change pin function go to the CLI and use `get pin` command to check current assignment. For example, to set first output to pin 1 use command
 
 `set pin_output_0 1`
 
@@ -54,14 +54,14 @@ Tu unmap pin function use -1 as pin number
 | RX 2 | `pin_serial_1_rx` | 32    | 15       |
 | TX 2 | `pin_serial_1_tx` | 33    | 16       |
 | RX 3 | `pin_serial_2_rx` | 16    | 17       |
-| TX 4 | `pin_serial_2_tx` | 17    | 18       |
+| TX 3 | `pin_serial_2_tx` | 17    | 18       |
 
 ## Default Analog pin mapping
 
 | Uart    | CLI name          | ESP32 | ESP32-S3 |
 |--------:|-------------------|------:|---------:|
 | Voltage | `pin_input_adc_0` |  36   | 1        |
-| Current | `pin_input_adc_1` |  19   | 4        |
+| Current | `pin_input_adc_1` |  39   | 4        |
 
 > [!NOTE]
 > On ESP32 choose only pins assigned to ADC1 channels

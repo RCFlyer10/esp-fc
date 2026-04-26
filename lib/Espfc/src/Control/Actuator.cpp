@@ -1,5 +1,6 @@
 #include "Control/Actuator.h"
 #include "Utils/Math.hpp"
+#include "Actuator.h"
 
 namespace Espfc::Control {
 
@@ -36,6 +37,7 @@ int Actuator::update()
   updateDynLpf();
   updateRescueConfig();
   updateLed();
+  updateAdjustments();
 
   if(_model.config.debug.mode == DEBUG_PIDLOOP)
   {
@@ -87,18 +89,23 @@ void Actuator::updateScaler()
 void Actuator::updateArmingDisabled()
 {
   int errors = _model.state.i2cErrorDelta;
-  _model.state.i2cErrorDelta = 0;
+  _model.state.i2cErrorDelta = 0;  
 
-  _model.setArmingDisabled(ARMING_DISABLED_NO_GYRO,        !_model.state.gyro.present || errors);
-  _model.setArmingDisabled(ARMING_DISABLED_FAILSAFE,        _model.state.failsafe.phase != FC_FAILSAFE_IDLE);
-  _model.setArmingDisabled(ARMING_DISABLED_RX_FAILSAFE,     _model.state.input.rxLoss || _model.state.input.rxFailSafe);
-  _model.setArmingDisabled(ARMING_DISABLED_THROTTLE,       !_model.isThrottleLow());
-  _model.setArmingDisabled(ARMING_DISABLED_CALIBRATING,     _model.calibrationActive());
-  _model.setArmingDisabled(ARMING_DISABLED_MOTOR_PROTOCOL,  _model.config.output.protocol == ESC_PROTOCOL_DISABLED);
-  _model.setArmingDisabled(ARMING_DISABLED_REBOOT_REQUIRED, _model.state.mode.rescueConfigMode == RESCUE_CONFIG_ACTIVE);
-  if(_model.isFeatureActive(FEATURE_GPS))
+  if(!_model.isModeActive(MODE_ARMED)) 
   {
-    _model.setArmingDisabled(ARMING_DISABLED_GPS, !_model.state.gps.present || _model.state.gps.numSats < _model.config.gps.minSats);
+    _model.setArmingDisabled(ARMING_DISABLED_NO_GYRO,        !_model.state.gyro.present || errors);
+    _model.setArmingDisabled(ARMING_DISABLED_FAILSAFE,        _model.state.failsafe.phase != FC_FAILSAFE_IDLE);
+    _model.setArmingDisabled(ARMING_DISABLED_RX_FAILSAFE,     _model.state.input.rxLoss || _model.state.input.rxFailSafe);
+    _model.setArmingDisabled(ARMING_DISABLED_THROTTLE,       !_model.isThrottleLow());
+    _model.setArmingDisabled(ARMING_DISABLED_CALIBRATING,     _model.calibrationActive());
+    _model.setArmingDisabled(ARMING_DISABLED_MOTOR_PROTOCOL,  _model.config.output.protocol == ESC_PROTOCOL_DISABLED);
+    _model.setArmingDisabled(ARMING_DISABLED_REBOOT_REQUIRED, _model.state.mode.rescueConfigMode == RESCUE_CONFIG_ACTIVE);
+    _model.setArmingDisabled(ARMING_DISABLED_ANGLE,           _model.isArmingAngle());
+    
+    if(_model.isFeatureActive(FEATURE_GPS))
+    {
+      _model.setArmingDisabled(ARMING_DISABLED_GPS, !_model.state.gps.present || _model.state.gps.numSats < _model.config.gps.minSats);
+    }
   }
 }
 
@@ -276,6 +283,52 @@ void Actuator::updateLed()
   else
   {
     _model.state.led_1.setStatus(Connect::LED_OFF);
+  }
+}
+
+void Actuator::updateAdjustments()
+{  
+  for (uint8_t i = 0; i < 3; i++)                    
+  {
+    const auto& adj = _model.config.adjustmentRanges[i];
+    
+    if (adj.function == 0) continue;      
+    
+    uint8_t auxIndex = AXIS_AUX_1 + adj.adjustChannel;
+    if (auxIndex >= AXIS_COUNT) continue;    
+
+    uint16_t channelValue = _model.state.input.us[auxIndex];    
+    
+    uint16_t rangeMin = 900 + (uint16_t)adj.startRange * 25u;
+    uint16_t rangeMax = 900 + (uint16_t)adj.endRange * 25u;    
+
+    if (channelValue < rangeMin || channelValue > rangeMax) continue;         
+    
+    switch (adj.function)
+    {
+      case RATE_PROFILE:        
+      {
+          uint8_t newProfile = 0;
+          if      (channelValue < 1300) newProfile = 0;   // Low
+          else if (channelValue < 1700) newProfile = 1;   // Middle
+          else                          newProfile = 2;   // High          
+
+          if (newProfile != _model.config.input.rates.activeRateProfile)
+          {
+              _model.config.input.rates.activeRateProfile = newProfile;              
+              _model.config.input.rates.updateAvailable = true; 
+          }
+      }
+
+      // Future expansions - just add more cases here
+      // case 13:     // PID_PROFILE
+      //     _model.changePidProfile(...);
+      //     break;
+
+      default:
+          // Unknown function - ignore
+          break;
+    }    
   }
 }
 

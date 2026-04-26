@@ -20,6 +20,8 @@ public:
   int update();
 
 private:
+  void calculateHomeVector() const;
+
   enum State {
     DETECT_BAUD,
     SET_BAUD,
@@ -28,6 +30,7 @@ private:
     ENABLE_UBX,
     ENABLE_NAV5,
     ENABLE_SBAS,
+    CONFIGURE_GNSS,
     SET_RATE,
     WAIT,
     RECEIVE,
@@ -48,12 +51,11 @@ private:
     Gps::UbxFrame<MsgType> frame{m};
     const uint8_t* ptr = reinterpret_cast<const uint8_t*>(&frame);
     _port->write(ptr, sizeof(frame));
-    
+
     setState(WAIT, ackState, timeoutState);
   }
 
   void setState(State state, State ackState, State timeoutState);
-
   void setState(State state);
 
   void handleError() const;
@@ -61,6 +63,7 @@ private:
   void handleNavSat() const;
   void handleVersion() const;
   void checkSupport(const char* payload) const;
+  void configureGnss();
 
   static constexpr uint32_t TIMEOUT = 300000;
   static constexpr uint32_t DETECT_TIMEOUT = 2200000;

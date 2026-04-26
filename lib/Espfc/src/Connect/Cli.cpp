@@ -357,6 +357,7 @@ const Cli::Param * Cli::initialize(ModelConfig& c)
   static const char* blackboxDevChoices[] = { PSTR("NONE"), PSTR("FLASH"), PSTR("SD_CARD"), PSTR("SERIAL"), NULL };
   static const char* blackboxModeChoices[] = { PSTR("NORMAL"), PSTR("TEST"), PSTR("ALWAYS"), NULL };
   static const char* ledTypeChoices[] = { PSTR("SIMPLE"), PSTR("STRIP"), NULL };
+  static const char* activeRateProfileChoices[] = { PSTR("LOW"), PSTR("MID"), PSTR("HIGH"), NULL };
 
   size_t i = 0;
   static const Param params[] = {
@@ -369,6 +370,7 @@ const Cli::Param * Cli::initialize(ModelConfig& c)
     Param(PSTR("feature_rx_spi"), &c.featureMask, 25),
     Param(PSTR("feature_soft_serial"), &c.featureMask, 6),
     Param(PSTR("feature_telemetry"), &c.featureMask, 10),
+
 
     Param(PSTR("debug_mode"), &c.debug.mode, debugModeChoices),
     Param(PSTR("debug_axis"), &c.debug.axis),
@@ -434,7 +436,16 @@ const Cli::Param * Cli::initialize(ModelConfig& c)
 
     Param(PSTR("gps_min_sats"), &c.gps.minSats),
     Param(PSTR("gps_set_home_once"), &c.gps.setHomeOnce),
-
+    
+    Param(PSTR("gps_gnss_mode"), &c.gps.gnssMode),
+    Param(PSTR("gps_enable_dual_band"), &c.gps.enableDualBand),
+    Param(PSTR("gps_enable_gps"), &c.gps.enableGPS),
+    Param(PSTR("gps_enable_glonass"), &c.gps.enableGLONASS),
+    Param(PSTR("gps_enable_galileo"), &c.gps.enableGalileo),
+    Param(PSTR("gps_enable_beidou"), &c.gps.enableBeiDou),
+    Param(PSTR("gps_enable_qzss"), &c.gps.enableQZSS),
+    Param(PSTR("gps_enable_sbas"), &c.gps.enableSBAS),
+    
     Param(PSTR("board_align_roll"), &c.boardAlignment[0]),
     Param(PSTR("board_align_pitch"), &c.boardAlignment[1]),
     Param(PSTR("board_align_yaw"), &c.boardAlignment[2]),
@@ -455,28 +466,81 @@ const Cli::Param * Cli::initialize(ModelConfig& c)
     Param(PSTR("fusion_gain_p"), &c.fusion.gain),
     Param(PSTR("fusion_gain_i"), &c.fusion.gainI),
 
-    Param(PSTR("input_rate_type"), &c.input.rateType, inputRateTypeChoices),
+    Param(PSTR("active_rate_profile"), &c.input.rates.activeRateProfile, activeRateProfileChoices),
 
-    Param(PSTR("input_roll_rate"), &c.input.rate[0]),
-    Param(PSTR("input_roll_srate"), &c.input.superRate[0]),
-    Param(PSTR("input_roll_expo"), &c.input.expo[0]),
-    Param(PSTR("input_roll_limit"), &c.input.rateLimit[0]),
+    Param(PSTR("rate_profile_low_rate_type"), &c.input.rates.rateProfile[0].rateType, inputRateTypeChoices),
+    Param(PSTR("rate_profile_mid_rate_type"), &c.input.rates.rateProfile[1].rateType, inputRateTypeChoices),
+    Param(PSTR("rate_profile_high_rate_type"), &c.input.rates.rateProfile[2].rateType, inputRateTypeChoices),
 
-    Param(PSTR("input_pitch_rate"), &c.input.rate[1]),
-    Param(PSTR("input_pitch_srate"), &c.input.superRate[1]),
-    Param(PSTR("input_pitch_expo"), &c.input.expo[1]),
-    Param(PSTR("input_pitch_limit"), &c.input.rateLimit[1]),
+    Param(PSTR("rate_profile_low_roll_rate"), &c.input.rates.rateProfile[0].rate[AXIS_ROLL]),
+    Param(PSTR("rate_profile_low_roll_srate"), &c.input.rates.rateProfile[0].superRate[AXIS_ROLL]),
+    Param(PSTR("rate_profile_low_roll_expo"), &c.input.rates.rateProfile[0].expo[AXIS_ROLL]),    
 
-    Param(PSTR("input_yaw_rate"), &c.input.rate[2]),
-    Param(PSTR("input_yaw_srate"), &c.input.superRate[2]),
-    Param(PSTR("input_yaw_expo"), &c.input.expo[2]),
-    Param(PSTR("input_yaw_limit"), &c.input.rateLimit[2]),
+    Param(PSTR("rate_profile_mid_roll_rate"), &c.input.rates.rateProfile[1].rate[AXIS_ROLL]),
+    Param(PSTR("rate_profile_mid_roll_srate"), &c.input.rates.rateProfile[1].superRate[AXIS_ROLL]),
+    Param(PSTR("rate_profile_mid_roll_expo"), &c.input.rates.rateProfile[1].expo[AXIS_ROLL]),
+
+    Param(PSTR("rate_profile_high_roll_rate"), &c.input.rates.rateProfile[2].rate[AXIS_ROLL]),
+    Param(PSTR("rate_profile_high_roll_srate"), &c.input.rates.rateProfile[2].superRate[AXIS_ROLL]),
+    Param(PSTR("rate_profile_high_roll_expo"), &c.input.rates.rateProfile[2].expo[AXIS_ROLL]),
+    Param(PSTR("rate_roll_limit"), &c.input.rates.rateLimit[AXIS_ROLL]),
+
+    Param(PSTR("rate_profile_low_pitch_rate"), &c.input.rates.rateProfile[0].rate[AXIS_PITCH]),
+    Param(PSTR("rate_profile_low_pitch_srate"), &c.input.rates.rateProfile[0].superRate[AXIS_PITCH]),
+    Param(PSTR("rate_profile_low_pitch_expo"), &c.input.rates.rateProfile[0].expo[AXIS_PITCH]),
+    
+    Param(PSTR("rate_profile_mid_pitch_rate"), &c.input.rates.rateProfile[1].rate[AXIS_PITCH]),
+    Param(PSTR("rate_profile_mid_pitch_srate"), &c.input.rates.rateProfile[1].superRate[AXIS_PITCH]),
+    Param(PSTR("rate_profile_mid_pitch_expo"), &c.input.rates.rateProfile[1].expo[AXIS_PITCH]),    
+
+    Param(PSTR("rate_profile_high_pitch_rate"), &c.input.rates.rateProfile[2].rate[AXIS_PITCH]),
+    Param(PSTR("rate_profile_high_pitch_srate"), &c.input.rates.rateProfile[2].superRate[AXIS_PITCH]),
+    Param(PSTR("rate_profile_high_pitch_expo"), &c.input.rates.rateProfile[2].expo[AXIS_PITCH]),
+    Param(PSTR("rate_pitch_limit"), &c.input.rates.rateLimit[AXIS_PITCH]),    
+
+    Param(PSTR("rate_profile_low_yaw_rate"), &c.input.rates.rateProfile[0].rate[AXIS_YAW]),
+    Param(PSTR("rate_profile_low_yaw_srate"), &c.input.rates.rateProfile[0].superRate[AXIS_YAW]),
+    Param(PSTR("rate_profile_low_yaw_expo"), &c.input.rates.rateProfile[0].expo[AXIS_YAW]),     
+    
+    Param(PSTR("rate_profile_mid_yaw_rate"), &c.input.rates.rateProfile[1].rate[AXIS_YAW]),
+    Param(PSTR("rate_profile_mid_yaw_srate"), &c.input.rates.rateProfile[1].superRate[AXIS_YAW]),
+    Param(PSTR("rate_profile_mid_yaw_expo"), &c.input.rates.rateProfile[1].expo[AXIS_YAW]),
+
+    Param(PSTR("rate_profile_high_yaw_rate"), &c.input.rates.rateProfile[2].rate[AXIS_YAW]),
+    Param(PSTR("rate_profile_high_yaw_srate"), &c.input.rates.rateProfile[2].superRate[AXIS_YAW]),
+    Param(PSTR("rate_profile_high_yaw_expo"), &c.input.rates.rateProfile[2].expo[AXIS_YAW]),
+    Param(PSTR("rate_yaw_limit"), &c.input.rates.rateLimit[AXIS_YAW]),
+    
+    Param(PSTR("rate_profile_low_throttle_mid"), &c.input.rates.rateProfile[0].throttleConfig.mid),
+    Param(PSTR("rate_profile_low_throttle_expo"), &c.input.rates.rateProfile[0].throttleConfig.expo),
+    Param(PSTR("rate_profile_low_throttle_limit_type"), &c.input.rates.rateProfile[0].throttleConfig.throttleLimitType, throtleLimitTypeChoices),
+    Param(PSTR("rate_profile_low_throttle_limit"), &c.input.rates.rateProfile[0].throttleConfig.throttleLimitPercent),
+    
+    Param(PSTR("rate_profile_mid_throttle_mid"), &c.input.rates.rateProfile[1].throttleConfig.mid),
+    Param(PSTR("rate_profile_mid_throttle_expo"), &c.input.rates.rateProfile[1].throttleConfig.expo),
+    Param(PSTR("rate_profile_mid_throttle_limit_type"), &c.input.rates.rateProfile[1].throttleConfig.throttleLimitType, throtleLimitTypeChoices),
+    Param(PSTR("rate_profile_mid_throttle_limit"), &c.input.rates.rateProfile[1].throttleConfig.throttleLimitPercent),
+
+    Param(PSTR("rate_profile_high_throttle_mid"), &c.input.rates.rateProfile[2].throttleConfig.mid),
+    Param(PSTR("rate_profile_high_throttle_expo"), &c.input.rates.rateProfile[2].throttleConfig.expo),
+    Param(PSTR("rate_profile_high_throttle_limit_type"), &c.input.rates.rateProfile[2].throttleConfig.throttleLimitType, throtleLimitTypeChoices),
+    Param(PSTR("rate_profile_high_throttle_limit"), &c.input.rates.rateProfile[2].throttleConfig.throttleLimitPercent),
+
+    Param(PSTR("rate_profile_low_tpa_scale"), &c.input.rates.rateProfile[0].controllerConfig.tpaScale),
+    Param(PSTR("rate_profile_low_tpa_breakpoint"), &c.input.rates.rateProfile[0].controllerConfig.tpaBreakpoint),
+    Param(PSTR("rate_profile_mid_tpa_scale"), &c.input.rates.rateProfile[1].controllerConfig.tpaScale),
+    Param(PSTR("rate_profile_mid_tpa_breakpoint"), &c.input.rates.rateProfile[1].controllerConfig.tpaBreakpoint),
+    Param(PSTR("rate_profile_high_tpa_scale"), &c.input.rates.rateProfile[2].controllerConfig.tpaScale),
+    Param(PSTR("rate_profile_high_tpa_breakpoint"), &c.input.rates.rateProfile[2].controllerConfig.tpaBreakpoint),
 
     Param(PSTR("input_deadband"), &c.input.deadband),
 
     Param(PSTR("input_min"), &c.input.minRc),
     Param(PSTR("input_mid"), &c.input.midRc),
     Param(PSTR("input_max"), &c.input.maxRc),
+    Param(PSTR("input_min_check"), &c.input.minCheck),
+    Param(PSTR("input_max_check"), &c.input.maxCheck),
+    Param(PSTR("input_small_angle"), &c.input.smallAngle),
 
     Param(PSTR("input_interpolation"), &c.input.interpolationMode, interpolChoices),
     Param(PSTR("input_interpolation_interval"), &c.input.interpolationInterval),
@@ -505,7 +569,7 @@ const Cli::Param * Cli::initialize(ModelConfig& c)
     Param(PSTR("input_12"), &c.input.channel[12]),
     Param(PSTR("input_13"), &c.input.channel[13]),
     Param(PSTR("input_14"), &c.input.channel[14]),
-    Param(PSTR("input_15"), &c.input.channel[15]),
+    Param(PSTR("input_15"), &c.input.channel[15]),    
 
     Param(PSTR("throttle_mid"), &c.throttle.mid),
     Param(PSTR("throttle_expo"), &c.throttle.expo),
@@ -598,14 +662,10 @@ const Cli::Param * Cli::initialize(ModelConfig& c)
     Param(PSTR("pid_iterm_zero"), &c.iterm.lowThrottleZeroIterm),
     Param(PSTR("pid_iterm_relax"), &c.iterm.relax, inputItermRelaxChoices),
     Param(PSTR("pid_iterm_relax_cutoff"), &c.iterm.relaxCutoff),
-    Param(PSTR("pid_tpa_scale"), &c.controller.tpaScale),
-    Param(PSTR("pid_tpa_breakpoint"), &c.controller.tpaBreakpoint),
-
+    
     Param(PSTR("mixer_sync"), &c.mixerSync),
     Param(PSTR("mixer_type"), &c.mixer.type, mixerTypeChoices),
-    Param(PSTR("mixer_yaw_reverse"), &c.mixer.yawReverse),
-    Param(PSTR("mixer_throttle_limit_type"), &c.output.throttleLimitType, throtleLimitTypeChoices),
-    Param(PSTR("mixer_throttle_limit_percent"), &c.output.throttleLimitPercent),
+    Param(PSTR("mixer_yaw_reverse"), &c.mixer.yawReverse),    
     Param(PSTR("mixer_output_limit"), &c.output.motorLimit),
 
     Param(PSTR("output_motor_protocol"), &c.output.protocol, protocolChoices),
@@ -799,6 +859,11 @@ const Cli::Param * Cli::initialize(ModelConfig& c)
     Param(PSTR("mix_62"), &c.customMixes[i++]),
     Param(PSTR("mix_63"), &c.customMixes[i++]),
 
+    /* Param(PSTR("adjrange_0"), &c.adjustmentRanges[0]),
+    Param(PSTR("adjrange_1"), &c.adjustmentRanges[1]),
+    Param(PSTR("adjrange_2"), &c.adjustmentRanges[2]), */
+    
+
     Param() // terminate
   };
   return params;
@@ -887,7 +952,7 @@ void Cli::execute(CliCmd& cmd, Stream& s)
       PSTR("available commands:"),
       PSTR(" help"), PSTR(" dump"), PSTR(" get param"), PSTR(" set param value ..."), PSTR(" cal [gyro]"),
       PSTR(" defaults"), PSTR(" save"), PSTR(" reboot"), PSTR(" scaler"), PSTR(" mixer"),
-      PSTR(" stats"), PSTR(" status"), PSTR(" devinfo"), PSTR(" version"), PSTR(" logs"), PSTR(" gps"),
+      PSTR(" stats"), PSTR(" status"), PSTR(" devinfo"), PSTR(" version"), PSTR(" logs"), PSTR(" gps [set_home|clear_home]"),
       //PSTR(" load"), PSTR(" eeprom"),
       //PSTR(" fsinfo"), PSTR(" fsformat"), PSTR(" log"),
       nullptr
@@ -1073,7 +1138,20 @@ void Cli::execute(CliCmd& cmd, Stream& s)
   }
   else if(strcmp_P(cmd.args[0], PSTR("gps")) == 0)
   {
-    printGpsStatus(s, true);
+    if(cmd.args[1] && strcmp_P(cmd.args[1], PSTR("set_home")) == 0)
+    {
+      _model.setGpsHome(true);
+      s.println(_model.state.gps.homeSet ? F("Home position set") : F("No GPS fix"));
+    }
+    else if(cmd.args[1] && strcmp_P(cmd.args[1], PSTR("clear_home")) == 0)
+    {
+      _model.state.gps.homeSet = false;
+      s.println(F("Home position cleared"));
+    }
+    else
+    {
+      printGpsStatus(s, true);
+    }
   }
   else if(strcmp_P(cmd.args[0], PSTR("preset")) == 0)
   {
@@ -1276,7 +1354,8 @@ void Cli::execute(CliCmd& cmd, Stream& s)
     s.print(F("   arm flags:"));
     for(size_t i = 0; i < armingDisableNamesLength; i++)
     {
-      if(_model.state.mode.armingDisabledFlags & (1 << i)) {
+      // Use 1UL to ensure 32-bit unsigned shift
+      if(_model.state.mode.armingDisabledFlags & (1UL << i)) {
         s.print(' ');
         s.print(armingDisableNames[i]);
       }
@@ -1572,6 +1651,33 @@ void Cli::printGpsStatus(Stream& s, bool full) const
     const GpsSatelite& sv = _model.state.gps.svinfo[i];
     s.printf("%s %3d %3d  %s %s", getGnssName(sv.gnssId), sv.id, sv.cno, getUsedName(sv.quality.svUsed), getQualityName(sv.quality.qualityInd));
     s.println();
+  }
+  s.println(F("Home:"));
+  if (_model.state.gps.homeSet)
+  {
+    s.print(F("  Lat:  "));
+    s.print(_model.state.gps.location.home.lat);
+    s.print(F(" ("));
+    s.print(_model.state.gps.location.home.lat * 1e-7f, 7);
+    s.println(F(")"));
+
+    s.print(F("  Lon:  "));
+    s.print(_model.state.gps.location.home.lon);
+    s.print(F(" ("));
+    s.print(_model.state.gps.location.home.lon * 1e-7f, 7);
+    s.println(F(")"));
+
+    s.print(F("  Dist: "));
+    s.print(_model.state.gps.distanceToHome);
+    s.println(F(" m"));
+
+    s.print(F("  Bear: "));
+    s.print(_model.state.gps.directionToHome);
+    s.println(F(" deg"));
+  }
+  else
+  {
+    s.println(F("  Not set"));
   }
 #endif
 }

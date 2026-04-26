@@ -178,6 +178,14 @@ class Model
       return state.mode.armingDisabledFlags & flag;
     }
 
+    bool isArmingAngle() const
+    {
+      float rollTilt = fabsf(state.attitude.euler.x);
+      float pitchTilt = fabsf(state.attitude.euler.y);
+      float maxTiltRadians = (float)config.input.smallAngle * (M_PI / 180.0f); // Convert to Radians
+      return rollTilt > maxTiltRadians || pitchTilt > maxTiltRadians;
+    }
+
     void setOutputSaturated(bool val)
     {
       state.output.saturated = val;
@@ -381,12 +389,15 @@ class Model
       }
 
       // sanitize throttle and motor limits
-      if(config.output.throttleLimitType < 0 || config.output.throttleLimitType >= THROTTLE_LIMIT_TYPE_MAX) {
-        config.output.throttleLimitType = THROTTLE_LIMIT_TYPE_NONE;
+      auto& throttleConfig = config.input.rates.rateProfile[config.input.rates.activeRateProfile].throttleConfig;
+      if(throttleConfig.throttleLimitType < 0 || throttleConfig.throttleLimitType >= THROTTLE_LIMIT_TYPE_MAX) 
+      {
+        throttleConfig.throttleLimitType = THROTTLE_LIMIT_TYPE_NONE;
       }
 
-      if(config.output.throttleLimitPercent < 1 || config.output.throttleLimitPercent > 100) {
-        config.output.throttleLimitPercent = 100;
+      if(throttleConfig.throttleLimitPercent < 1 || throttleConfig.throttleLimitPercent > 100) 
+      {
+        throttleConfig.throttleLimitPercent = 100;
       }
 
       if(config.output.motorLimit < 1 || config.output.motorLimit > 100) {

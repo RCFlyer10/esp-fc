@@ -6,16 +6,37 @@ namespace Espfc::Control {
 constexpr float SETPOINT_RATE_LIMIT = 1998.0f;
 constexpr float RC_RATE_INCREMENTAL = 14.54f;
 
-void Rates::begin(const InputConfig& config)
+void Rates::begin(InputConfig& config)
 {
-  rateType = (RateType)config.rateType;
-  for(size_t i = 0; i < 3; i++)
-  {
-    rcExpo[i] = config.expo[i];
-    rcRates[i] = config.rate[i];
-    rates[i] = config.superRate[i];
-    rateLimit[i] = config.rateLimit[i];
+  updateRateProfile(config);  
+}
+
+float FAST_CODE_ATTR Rates::throttleCurve(float input, const ThrottleConfig& config) const
+{
+  input = Utils::clamp(input, -0.995f, 0.995f);
+  float v = (input + 1.0f) * 0.5f; 
+  v = Utils::clamp(v, 0.0f, 1.0f);
+
+  if (config.expo == 0) return input; 
+  
+  float m = (float)config.mid / 100.0f;
+  float e = (float)config.expo / 100.0f;
+  
+  if (m <= 0.01f) m = 0.01f;
+  if (m >= 0.99f) m = 0.99f;
+
+  float out;
+  if (v < m) {
+    // Bottom half mirrored logic
+    float ratio = (m - v) / m;
+    out = m - m * (e * power3(ratio) + (1.0f - e) * ratio);
+  } else {
+    // Top half standard logic
+    float ratio = (v - m) / (1.0f - m);
+    out = m + (1.0f - m) * (e * power3(ratio) + (1.0f - e) * ratio);
   }
+
+  return (out * 2.0f) - 1.0f;
 }
 
 float FAST_CODE_ATTR Rates::throttleCurve(float input, const ThrottleConfig& config) const
@@ -136,6 +157,26 @@ float FAST_CODE_ATTR Rates::quick(const int axis, float rcCommandf, const float 
   float angleRate = constrainf(rcCommandf * rcRate * superfactor, -SETPOINT_RATE_LIMIT, SETPOINT_RATE_LIMIT);
 
   return angleRate;
+}
+
+void Rates::updateRateProfile(InputConfig& config)
+{
+    uint8_t profileIndex = config.rates.activeRateProfile;
+    if (profileIndex >= 3) profileIndex = 0;
+
+    RateProfile& rp = config.rates.rateProfile[profileIndex];
+
+    rateType = (RateType)rp.rateType;
+
+    for(size_t i = 0; i < 3; i++)
+    {
+        rcExpo[i]   = rp.expo[i];           
+        rcRates[i]  = rp.rate[i];
+        rates[i]    = rp.superRate[i];
+        rateLimit[i] = config.rates.rateLimit[i];
+    }
+    
+    config.rates.updateAvailable = false;
 }
 
 }

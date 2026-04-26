@@ -24,12 +24,19 @@ int Controller::begin()
 
 int FAST_CODE_ATTR Controller::update()
 {
+  if(_model.config.input.rates.updateAvailable)
+  {
+    _rates.updateRateProfile(_model.config.input);
+  }
+  
   uint32_t startTime = 0;
   if(_model.config.debug.mode == DEBUG_PIDLOOP)
   {
     startTime = micros();
     _model.state.debug[0] = startTime - _model.state.loopTimer.last;
   }
+
+  processStickCommands();
 
   {
     Utils::Stats::Measure(_model.state.stats, COUNTER_OUTER_PID);
@@ -148,7 +155,7 @@ void FAST_CODE_ATTR Controller::outerLoop()
   float throttle = _model.state.input.ch[AXIS_THRUST];
 
   // Apply Rates curve here
-  throttle = _rates.throttleCurve(throttle, _model.config.throttle);
+  throttle = _rates.throttleCurve(throttle, _model.config.input.rates.rateProfile[_model.config.input.rates.activeRateProfile].throttleConfig);
 
   if(_model.isModeActive(MODE_ALTHOLD))
   {  
@@ -225,9 +232,10 @@ float Controller::calcualteAltHoldSetpoint(float thrust) const
 
 float Controller::getTpaFactor() const
 {
-  if(_model.config.controller.tpaScale == 0) return 1.f;
-  float t = Utils::clamp(_model.state.input.us[AXIS_THRUST], (float)_model.config.controller.tpaBreakpoint, 2000.f);
-  return Utils::map(t, (float)_model.config.controller.tpaBreakpoint, 2000.f, 1.f, 1.f - ((float)_model.config.controller.tpaScale * 0.01f));
+  const auto& controllerConfig = _model.config.input.rates.rateProfile[_model.config.input.rates.activeRateProfile].controllerConfig;
+  if(controllerConfig.tpaScale == 0) return 1.f;
+  float t = Utils::clamp(_model.state.input.us[AXIS_THRUST], (float)controllerConfig.tpaBreakpoint, 2000.f);
+  return Utils::map(t, (float)controllerConfig.tpaBreakpoint, 2000.f, 1.f, 1.f - ((float)controllerConfig.tpaScale * 0.01f));
 }
 
 void Controller::resetIterm()
@@ -332,4 +340,68 @@ void Controller::beginAltHold()
   pid.begin();
 }
 
+void Controller::processStickCommands()
+{
+  if(_model.isModeActive(MODE_ARMED)) return;  
+  
+  if(_model.isModeActive(MODE_ANGLE))
+  {     
+    if(!_trimming)
+    {
+      if(_model.state.input.us[AXIS_THRUST] >= _model.config.input.maxCheck)
+      {               
+        if(_model.state.input.us[AXIS_ROLL] >= _model.config.input.maxCheck)
+        {
+          _model.config.accelTrim.roll += 1;
+          _trimming = true;
+        }
+        else if(_model.state.input.us[AXIS_ROLL] <= _model.config.input.minCheck)
+        {
+          _model.config.accelTrim.roll -= 1;
+          _trimming = true;          
+        }
+        else if(_model.state.input.us[AXIS_PITCH] >= _model.config.input.maxCheck)
+        {
+          _model.config.accelTrim.pitch += 1;
+          _trimming = true;          
+        }
+        else if(_model.state.input.us[AXIS_PITCH] <= _model.config.input.minCheck)
+        {
+          _model.config.accelTrim.pitch -= 1;
+          _trimming = true;          
+        }        
+      }
+    }
+    else if(_model.state.input.us[AXIS_THRUST] <= _model.config.input.minCheck)
+    { 
+      if(_model.state.input.us[AXIS_ROLL] > _model.config.input.minCheck && _model.state.input.us[AXIS_ROLL] < _model.config.input.maxCheck
+        && _model.state.input.us[AXIS_PITCH] > _model.config.input.minCheck && _model.state.input.us[AXIS_PITCH] < _model.config.input.maxCheck)
+      {
+        _model.updateAccelTrim();
+        _model.state.led_1.setStatus(Connect::LED_INIT);
+        _trimming = false;
+        _saveRequested = true;
+      }
+    }
+    if(_saveRequested && _model.state.input.us[AXIS_THRUST] <= _model.config.input.minCheck 
+      && _model.state.input.us[AXIS_PITCH] <= _model.config.input.minCheck)
+    { 
+      if(_model.state.input.us[AXIS_ROLL] >= _model.config.input.maxCheck && _model.state.input.us[AXIS_YAW] <= _model.config.input.minCheck)
+      {
+        _model.save();
+        _model.state.led_1.setStatus(Connect::LED_DOUBLE_FLASH);
+        _saveRequested = false;
+      }
+    }
+  }
+  else if(_model.state.input.us[AXIS_THRUST] >= _model.config.input.maxCheck && _model.state.input.us[AXIS_YAW] <= _model.config.input.minCheck
+    && _model.state.input.us[AXIS_PITCH] <= _model.config.input.minCheck)
+  {
+    _model.calibrateGyro();    
+  }
+  /* else if(_model.state.input.us[AXIS_THRUST] >= _model.config.input.maxCheck && _model.state.input.us[AXIS_YAW] >= _model.config.input.maxCheck)
+  {
+    _model.calibrateMag();
+  } */
+}
 }

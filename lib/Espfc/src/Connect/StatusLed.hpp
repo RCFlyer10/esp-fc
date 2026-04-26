@@ -17,7 +17,8 @@ enum LedStatus {
   LED_OK,
   LED_HEARTBEAT,
   LED_ERROR,
-  LED_INIT,  
+  LED_INIT, 
+  LED_DOUBLE_FLASH,
   LED_GYRO,  
   LED_STATUS_COUNT
 };
@@ -32,14 +33,14 @@ public:
   void setStatus(LedStatus newStatus, bool force = false);
 
 private:
-  void _write(uint8_t val);
+  void write(uint8_t val);
   int8_t _pin;
   uint8_t _type;
   uint8_t _invert;
   LedStatus _status;
   uint32_t _next;  
-  size_t _step;
+  size_t _step;  
   int * _pattern;
+  bool _locked;
 };
-
 }
