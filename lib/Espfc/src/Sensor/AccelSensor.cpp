@@ -56,15 +56,7 @@ int FAST_CODE_ATTR AccelSensor::filter()
 
   Utils::Stats::Measure measure(_model.state.stats, COUNTER_ACCEL_FILTER);
 
-  _model.state.accel.adc = (VectorFloat)_model.state.accel.raw * _model.state.accel.scale;
-
-  // Only apply offsets (Bias AND Trim) when NOT actively calibrating
-  if(_model.state.accel.calibrationState == CALIBRATION_IDLE)
-  {
-      // Software Trim (Now axis-aware because it's before align)
-      _model.state.accel.adc.x -= _model.state.accel.trimOffset.x;
-      _model.state.accel.adc.y -= _model.state.accel.trimOffset.y;
-  }
+  _model.state.accel.adc = (VectorFloat)_model.state.accel.raw * _model.state.accel.scale;  
 
   align(_model.state.accel.adc, _model.config.gyro.align);
   _model.state.accel.adc = _model.state.boardAlignment.apply(_model.state.accel.adc);

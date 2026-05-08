@@ -604,11 +604,6 @@ struct IBatConfig
   int16_t offset = 0;
 };
 
-struct ThrottleConfig {
-    uint8_t mid = 50;   // Range 0-100 (Default 50)
-    uint8_t expo = 0;   // Range 0-100 (Default 0)
-};
-
 struct GyroConfig
 {
   int8_t bus = BUS_AUTO;
@@ -760,9 +755,7 @@ enum AjustmentFunctions {
   SLIDER_MASTER_MULTIPLIER = 31,
 };
 
-struct Adjustments { 
-  //Adjustments(uint8_t e, uint8_t rc, uint8_t sr, uint8_t er, uint8_t f): enabled(e), rangeChannel(rc), startRange(sr), endRange(er), function(f) {}
-  uint8_t enabled = 0;
+struct Adjustments {   
   uint8_t rangeChannel = 0;       
   uint8_t startRange = 0;        
   uint8_t endRange = 0;          

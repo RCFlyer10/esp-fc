@@ -246,8 +246,8 @@ void MspProcessor::processCommand(MspMessage& m, MspResponse& r, Device::SerialD
       r.writeU8(0); // pid profile
       r.writeU16(lrintf(_model.state.stats.getCpuLoad()));
       if (m.cmd == MSP_STATUS_EX) {
-        r.writeU8(3); // max profile count
-        r.writeU8(_model.config.input.rates   .activeRateProfile); // current rate profile index
+        r.writeU8(3); // max profile count        
+        r.writeU8(_model.config.input.rates.activeRateProfile); // current rate profile index
       } else {  // MSP_STATUS
         //r.writeU16(_model.state.gyro.timer.interval); // gyro cycle time
         r.writeU16(0);
@@ -916,15 +916,14 @@ void MspProcessor::processCommand(MspMessage& m, MspResponse& r, Device::SerialD
 
     case MSP_SELECT_SETTING:
     {
-      if (m.remain() >= 1) {      
+      if (m.remain() >= 1) 
+      {      
         uint8_t rawValue = m.readU8();
-        uint8_t rateIndex = rawValue & 0x0F;
-        if (rateIndex < 3) {
-          _model.config.input.rates.activeRateProfile = rateIndex;
-        }
+        uint8_t rateIndex = rawValue & 0x0F;        
+        if (rateIndex < 3) _model.config.input.rates.activeRateProfile = rateIndex; 
       }
-    }
-
+    }          
+        
     case MSP_RC_TUNING:
     {
       const auto& p = _model.config.input.rates.rateProfile[_model.config.input.rates.activeRateProfile];
@@ -990,7 +989,7 @@ void MspProcessor::processCommand(MspMessage& m, MspResponse& r, Device::SerialD
       for (uint8_t i = 0; i < 3; i++) 
       {
         const auto& adj = _model.config.adjustmentRanges[i];
-        r.writeU8(adj.enabled); 
+        r.writeU8(0); 
         r.writeU8(adj.rangeChannel);
         r.writeU8(adj.startRange);
         r.writeU8(adj.endRange);
@@ -1005,7 +1004,7 @@ void MspProcessor::processCommand(MspMessage& m, MspResponse& r, Device::SerialD
       if (idx < 3) 
       {           
         auto& adj = _model.config.adjustmentRanges[idx];       
-        adj.enabled = m.readU8();      
+        m.readU8();      
         adj.rangeChannel = m.readU8(); 
         adj.startRange = m.readU8(); 
         adj.endRange = m.readU8();        

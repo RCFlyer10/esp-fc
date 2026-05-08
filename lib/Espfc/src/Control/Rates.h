@@ -20,7 +20,7 @@ class Rates
 {
   public:
     void begin(InputConfig& config);
-    float throttleCurve(float input, const ThrottleConfig &config) const;
+    float throttleCurve(float input, ThrottleConfig &config) const;
     float getSetpoint(const int axis, float input) const;
     void updateRateProfile(InputConfig &config);
 

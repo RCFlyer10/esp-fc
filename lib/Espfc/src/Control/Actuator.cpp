@@ -233,7 +233,7 @@ void Actuator::updateBuzzer()
 
 void Actuator::updateDynLpf()
 {
-  return; // temporary disable
+  //return; // temporary disable
   int scale = Utils::clamp((int)_model.state.input.us[AXIS_THRUST], 1000, 2000);
   if(_model.config.gyro.dynLpfFilter.cutoff > 0) {
     int gyroFreq = Utils::map(scale, 1000, 2000, _model.config.gyro.dynLpfFilter.cutoff, _model.config.gyro.dynLpfFilter.freq);
@@ -287,11 +287,14 @@ void Actuator::updateLed()
 }
 
 void Actuator::updateAdjustments()
-{  
+{
+  if(_model.getArmingDisabled(ARMING_DISABLED_RX_FAILSAFE)) return;
+
+  //if (_model.state.input.us[AXIS_AUX_1] == 1500) return; 
+
   for (uint8_t i = 0; i < 3; i++)                    
   {
-    const auto& adj = _model.config.adjustmentRanges[i];
-    
+    const auto& adj = _model.config.adjustmentRanges[i];    
     if (adj.function == 0) continue;      
     
     uint8_t auxIndex = AXIS_AUX_1 + adj.adjustChannel;
