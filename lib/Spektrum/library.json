@@ -1,0 +1,9 @@
+{
+  "name": "Spektrum",  
+  "version": "1.0.0",
+  "build": {
+    "flags": [
+      "-Wno-unused-variable"      
+    ]
+  }
+}

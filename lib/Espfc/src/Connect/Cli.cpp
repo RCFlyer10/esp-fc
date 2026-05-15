@@ -358,6 +358,23 @@ const Cli::Param * Cli::initialize(ModelConfig& c)
   static const char* blackboxModeChoices[] = { PSTR("NORMAL"), PSTR("TEST"), PSTR("ALWAYS"), NULL };
   static const char* ledTypeChoices[] = { PSTR("SIMPLE"), PSTR("STRIP"), NULL };
   static const char* activeRateProfileChoices[] = { PSTR("LOW"), PSTR("MID"), PSTR("HIGH"), NULL };
+  static const char* serialRxProviderChoices[] = {
+    PSTR("SPEK1024"), // 0: SERIALRX_SPEKTRUM1024
+    PSTR("SPEK2048"), // 1: SERIALRX_SPEKTRUM2048
+    PSTR("SBUS"),     // 2: SERIALRX_SBUS
+    PSTR("SUMD"),     // 3: SERIALRX_SUMD
+    PSTR("SUMH"),     // 4: SERIALRX_SUMH
+    PSTR("XBUS_B"),   // 5: SERIALRX_XBUS_MODE_B
+    PSTR("XBUS_RJ"),  // 6: SERIALRX_XBUS_MODE_B_RJ01
+    PSTR("IBUS"),     // 7: SERIALRX_IBUS
+    PSTR("JETI"),     // 8: SERIALRX_JETIEXBUS
+    PSTR("CRSF"),     // 9: SERIALRX_CRSF
+    PSTR("SRXL"),     // 10: SERIALRX_SRXL
+    PSTR("CUSTOM"),   // 11: SERIALRX_TARGET_CUSTOM
+    PSTR("FPORT"),    // 12: SERIALRX_FPORT
+    PSTR("SRXL2"),    // 13: SERIALRX_SRXL2
+    NULL              // Termination
+  };
 
   size_t i = 0;
   static const Param params[] = {
@@ -598,6 +615,8 @@ const Cli::Param * Cli::initialize(ModelConfig& c)
     Param(PSTR("serial_usb"), &c.serial[SERIAL_USB]),
 #endif
 
+    Param(PSTR("serial_rx_provider"), (int8_t*)&c.input.serialRxProvider, serialRxProviderChoices),
+
     Param(PSTR("scaler_0"), &c.scaler[0]),
     Param(PSTR("scaler_1"), &c.scaler[1]),
     Param(PSTR("scaler_2"), &c.scaler[2]),
@@ -725,14 +744,20 @@ const Cli::Param * Cli::initialize(ModelConfig& c)
 #if defined(ESPFC_SERIAL_0) && defined(ESPFC_SERIAL_REMAP_PINS)
     Param(PSTR("pin_serial_0_tx"), &c.pin[PIN_SERIAL_0_TX]),
     Param(PSTR("pin_serial_0_rx"), &c.pin[PIN_SERIAL_0_RX]),
+    Param(PSTR("serial_0_inverted"), &c.serial[SERIAL_UART_0].inverted),
+    Param(PSTR("serial_0_half_duplex"), &c.serial[SERIAL_UART_0].halfDuplex),
 #endif
 #if defined(ESPFC_SERIAL_1) && defined(ESPFC_SERIAL_REMAP_PINS)
     Param(PSTR("pin_serial_1_tx"), &c.pin[PIN_SERIAL_1_TX]),
     Param(PSTR("pin_serial_1_rx"), &c.pin[PIN_SERIAL_1_RX]),
+    Param(PSTR("serial_1_inverted"), &c.serial[SERIAL_UART_1].inverted),
+    Param(PSTR("serial_1_half_duplex"), &c.serial[SERIAL_UART_1].halfDuplex),
 #endif
 #if defined(ESPFC_SERIAL_2) && defined(ESPFC_SERIAL_REMAP_PINS)
     Param(PSTR("pin_serial_2_tx"), &c.pin[PIN_SERIAL_2_TX]),
     Param(PSTR("pin_serial_2_rx"), &c.pin[PIN_SERIAL_2_RX]),
+    Param(PSTR("serial_2_inverted"), &c.serial[SERIAL_UART_2].inverted),
+    Param(PSTR("serial_2_half_duplex"), &c.serial[SERIAL_UART_2].halfDuplex),
 #endif
 #ifdef ESPFC_I2C_0
     Param(PSTR("pin_i2c_scl"), &c.pin[PIN_I2C_0_SCL]),

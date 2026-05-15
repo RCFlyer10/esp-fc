@@ -42,7 +42,9 @@ int SerialManager::begin()
 
     SerialDeviceConfig sdc;
     sdc.baud = spc.baud;
-
+    sdc.halfDuplex = spc.halfDuplex;
+    sdc.inverted = spc.inverted;
+    
 #ifdef ESPFC_SERIAL_USB
     const bool hasUsbPort = true;
     const bool isUsbPort = i == SERIAL_USB;
