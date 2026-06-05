@@ -149,8 +149,20 @@ void FAST_CODE_ATTR InputCRSF::apply(const CrsfMessage& msg)
 void FAST_CODE_ATTR InputCRSF::applyLinkStats(const CrsfMessage& msg)
 {
   const CrsfLinkStats* stats = reinterpret_cast<const CrsfLinkStats*>(msg.payload);
-  (void)stats;
-  // TODO:
+  
+  auto& input = _telemetry->getModel().state.input;    
+    
+  // Convert both to actual dBm values
+  int16_t rssi_a = -static_cast<int16_t>(stats->uplink_RSSI_1);
+  int16_t rssi_b = -static_cast<int16_t>(stats->uplink_RSSI_2);
+  
+  // Combine into a single RSSI by taking the maximum
+  // (e.g., -60dBm is "better" than -90dBm, so max(-60, -90) = -60)
+  input.rssi = std::max(rssi_a, rssi_b);
+  
+  // Link quality is a percentage, so taking the max or the average 
+  // are both common, but max is typical for diversity status
+  input.linkQuality = stats->uplink_Link_quality; 
 }
 
 void FAST_CODE_ATTR InputCRSF::applyChannels(const CrsfMessage& msg)

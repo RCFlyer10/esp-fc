@@ -16,7 +16,7 @@ class SerialDeviceAdapter: public SerialDevice
   public:
     SerialDeviceAdapter(T& dev): _dev(dev) {}
     void begin(const SerialDeviceConfig& conf) override { targetSerialInit(_dev, conf); }
-    void updateBaudRate(int baud) override { _dev.updateBaudRate(baud); };
+    void updateBaudRate(int baud) override { _dev.updateBaudRate(baud);};
     int available() override { return _dev.available(); }
     int read() override { return _dev.read(); }
     size_t readMany(uint8_t * c, size_t l) override {

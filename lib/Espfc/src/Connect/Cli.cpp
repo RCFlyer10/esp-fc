@@ -744,20 +744,14 @@ const Cli::Param * Cli::initialize(ModelConfig& c)
 #if defined(ESPFC_SERIAL_0) && defined(ESPFC_SERIAL_REMAP_PINS)
     Param(PSTR("pin_serial_0_tx"), &c.pin[PIN_SERIAL_0_TX]),
     Param(PSTR("pin_serial_0_rx"), &c.pin[PIN_SERIAL_0_RX]),
-    Param(PSTR("serial_0_inverted"), &c.serial[SERIAL_UART_0].inverted),
-    Param(PSTR("serial_0_half_duplex"), &c.serial[SERIAL_UART_0].halfDuplex),
-#endif
+#endif    
 #if defined(ESPFC_SERIAL_1) && defined(ESPFC_SERIAL_REMAP_PINS)
     Param(PSTR("pin_serial_1_tx"), &c.pin[PIN_SERIAL_1_TX]),
-    Param(PSTR("pin_serial_1_rx"), &c.pin[PIN_SERIAL_1_RX]),
-    Param(PSTR("serial_1_inverted"), &c.serial[SERIAL_UART_1].inverted),
-    Param(PSTR("serial_1_half_duplex"), &c.serial[SERIAL_UART_1].halfDuplex),
-#endif
+    Param(PSTR("pin_serial_1_rx"), &c.pin[PIN_SERIAL_1_RX]), 
+#endif   
 #if defined(ESPFC_SERIAL_2) && defined(ESPFC_SERIAL_REMAP_PINS)
     Param(PSTR("pin_serial_2_tx"), &c.pin[PIN_SERIAL_2_TX]),
-    Param(PSTR("pin_serial_2_rx"), &c.pin[PIN_SERIAL_2_RX]),
-    Param(PSTR("serial_2_inverted"), &c.serial[SERIAL_UART_2].inverted),
-    Param(PSTR("serial_2_half_duplex"), &c.serial[SERIAL_UART_2].halfDuplex),
+    Param(PSTR("pin_serial_2_rx"), &c.pin[PIN_SERIAL_2_RX]),    
 #endif
 #ifdef ESPFC_I2C_0
     Param(PSTR("pin_i2c_scl"), &c.pin[PIN_I2C_0_SCL]),

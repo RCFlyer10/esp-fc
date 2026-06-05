@@ -174,6 +174,9 @@ struct InputState
   bool rxLoss;
   bool rxFailSafe;
 
+  int16_t rssi = 0;                // RSSI in dBm
+  uint8_t linkQuality = 0;         // LQ in percent (0-100)
+
   uint32_t frameTime;
   uint32_t frameDelta;
   uint32_t frameRate;

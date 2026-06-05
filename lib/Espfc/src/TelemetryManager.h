@@ -17,7 +17,8 @@ enum TelemetryProtocol {
 class TelemetryManager
 {
 public:
-  TelemetryManager(Model& model);
+  TelemetryManager(Model& model); 
+  Model& getModel() const { return _model; } 
   int process(Device::SerialDevice& s, TelemetryProtocol protocol) const;
   int processMsp(Device::SerialDevice& s, TelemetryProtocol protocol, Connect::MspMessage m, uint8_t origin);
 

@@ -1137,7 +1137,7 @@ void srxlRun(uint8_t busIndex, int16_t timeoutDelta_ms)
         if(pBus->timeoutCount_ms >= 50)
         {
             // After startup delay of 50ms, switch to handshake send or listen based on device unit ID
-            if(pBus->state == SrxlState_ListenOnStartup)
+            if(pBus->state == SrxlState_ListenOnStartup || pBus->state == SrxlState_ListenForHandshake)
             {
                 pBus->state = (pBus->fullID.deviceID & 0x0F) ? SrxlState_ListenForHandshake : SrxlState_SendHandshake;
             }
@@ -1155,7 +1155,7 @@ void srxlRun(uint8_t busIndex, int16_t timeoutDelta_ms)
                     pBus->pMasterRcvr->rssi_Pct = 0;
                     pBus->pMasterRcvr->rssi_dBm = -1;
                 }
-                pBus->state = SrxlState_ListenOnStartup;
+                pBus->state = (pBus->fullID.deviceID & 0x0F) ? SrxlState_ListenForHandshake : SrxlState_SendHandshake;
             }
         }
     }

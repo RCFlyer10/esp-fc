@@ -151,7 +151,7 @@ void FAST_CODE_ATTR Input::processInputs()
 
     // adj range
     //float t = Utils::map3((float)v, (float)ich.min, (float)ich.neutral, (float)ich.max, (float)PWM_RANGE_MIN, (float)PWM_RANGE_MID, (float)PWM_RANGE_MAX);
-    float t = Utils::mapi(v, ich.min, ich.max, PWM_RANGE_MIN, PWM_RANGE_MAX);
+    float t =   Utils::mapi(v, ich.min, ich.max, PWM_RANGE_MIN, PWM_RANGE_MAX);
 
     // filter if required
     t = _filter[c].update(t);
@@ -360,7 +360,7 @@ Device::InputDevice * Input::getInputDevice()
         return &_crsf;
 
       case SERIALRX_SRXL2: 
-        _srxl2.begin(serial, _model.isFeatureActive(FEATURE_TELEMETRY) ? &_telemetry : nullptr);
+        _srxl2.begin(serial, _model, _model.isFeatureActive(FEATURE_TELEMETRY));
         _model.logger.info().logln(F("RX SRXL2"));
         return &_srxl2;
     }

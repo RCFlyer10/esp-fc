@@ -95,13 +95,13 @@ enum SerialDeviceConfigStopBits {
 class SerialDeviceConfig
 {
   public:
-    SerialDeviceConfig():
-      baud(SERIAL_SPEED_115200), rx_pin(-1), tx_pin(-1), inverted(false), halfDuplex(false), parity(SDC_SERIAL_PARITY_NONE), stop_bits(SDC_SERIAL_STOP_BITS_1)  {}
+    SerialDeviceConfig(): baud(SERIAL_SPEED_115200), rx_pin(-1), tx_pin(-1), inverted(false),
+      halfDuplexSingleWire(false), parity(SDC_SERIAL_PARITY_NONE), stop_bits(SDC_SERIAL_STOP_BITS_1) {}
     uint32_t baud;
     int8_t rx_pin;
     int8_t tx_pin;
     bool inverted;
-    bool halfDuplex;
+    bool halfDuplexSingleWire;
     int8_t data_bits;
     int8_t parity;
     int8_t stop_bits;

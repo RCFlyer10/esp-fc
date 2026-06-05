@@ -21,8 +21,8 @@
 
 namespace Espfc {
 
-SerialManager::SerialManager(Model& model, TelemetryManager& telemetry): _model(model), _current(0), _msp(model), _cli(model), _vtx(model),
-  _telemetry(telemetry), _gps(model)
+SerialManager::SerialManager(Model& model, TelemetryManager& telemetry): _model(model), _current(0),
+ _msp(model), _cli(model), _vtx(model), _telemetry(telemetry), _gps(model)
 #ifdef ESPFC_SERIAL_SOFT_0_WIFI
   , _wireless(model)
 #endif
@@ -42,7 +42,7 @@ int SerialManager::begin()
 
     SerialDeviceConfig sdc;
     sdc.baud = spc.baud;
-    sdc.halfDuplex = spc.halfDuplex;
+    sdc.halfDuplexSingleWire = spc.halfDuplex;
     sdc.inverted = spc.inverted;
     
 #ifdef ESPFC_SERIAL_USB
@@ -83,6 +83,10 @@ int SerialManager::begin()
           break;
         case SERIALRX_CRSF:
           sdc.baud = 420000ul;
+          break;
+        case SERIALRX_SRXL2:
+          sdc.baud = 115200ul;
+          sdc.halfDuplexSingleWire = true;
           break;
         default:
           break;

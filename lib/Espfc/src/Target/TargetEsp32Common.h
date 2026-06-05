@@ -69,7 +69,8 @@ inline int targetSerialInit(T& dev, const SerialDeviceConfig& conf)
   if(dev) dev.end();
   dev.setTxBufferSize(SERIAL_TX_FIFO_SIZE);
   dev.begin(conf.baud, sc, conf.rx_pin, conf.tx_pin, conf.inverted);
-  if (conf.halfDuplex) {    
+  if (conf.halfDuplexSingleWire) { 
+    
     int uart_num = 0;
     if (&dev == &Serial) uart_num = 0;
     #if SOC_UART_NUM > 1
@@ -87,30 +88,14 @@ inline int targetSerialInit(T& dev, const SerialDeviceConfig& conf)
     gpio_pullup_en(pin);
     gpio_pulldown_dis(pin);    
 
-    // Switch to half-duplex mode
-    uart_set_mode(uart_num, UART_MODE_RS485_HALF_DUPLEX);
-
     uint32_t tx_sig = (uart_num == 0) ? U0TXD_OUT_IDX : 
                               (uart_num == 1) ? U1TXD_OUT_IDX : U2TXD_OUT_IDX;
 
     uint32_t rx_sig = (uart_num == 0) ? U0RXD_IN_IDX : 
                               (uart_num == 1) ? U1RXD_IN_IDX : U2RXD_IN_IDX;
-
-    // Force both TX and RX to the same pin
+    
     esp_rom_gpio_connect_out_signal((gpio_num_t)pin, tx_sig, false, false);
-    esp_rom_gpio_connect_in_signal((gpio_num_t)pin, rx_sig, false);
-
-    // Important RS485 settings
-    uart_dev_t *hw = (uart_num == 0) ? &UART0 : (uart_num == 1) ? &UART1 : &UART2;
-    hw->rs485_conf.en = 1;
-    hw->rs485_conf.rx_busy_tx_en = 0;   // Allow TX while receiving
-    hw->conf0.loopback = 0;    
-    hw->idle_conf.rx_idle_thrhd = 2;    // Idle threshold for end of frame
-    hw->conf1.rx_tout_thrhd = 2;       // Timeout after 2 symbols of silence
-    hw->conf1.rxfifo_full_thrhd = 1;    // Available for read after 1 byte
-    hw->conf1.txfifo_empty_thrhd = 10;  // Signal empty while we still have buffer space
-
-    Serial.printf("Converting to half-duplex on GPIO%d\n", conf.tx_pin);
+    esp_rom_gpio_connect_in_signal((gpio_num_t)pin, rx_sig, false);    
   }
     
   return 1;
