@@ -51,19 +51,21 @@ public:
       case CRSF_TELEMETRY_STATE_FM:
         flightMode(f);
         send(f, s);
-        _current = CRSF_TELEMETRY_STATE_GPS;
+        // If no GPS don't waste time sending empty messages
+        _current = _model.gpsActive() ? CRSF_TELEMETRY_STATE_GPS : (_model.baroActive() ? CRSF_TELEMETRY_STATE_BARO : CRSF_TELEMETRY_STATE_HB);
         break;
       case CRSF_TELEMETRY_STATE_GPS:
         gps(f);
         send(f, s);
-        _current = CRSF_TELEMETRY_STATE_BARO;
+        // If no barometer don't send the message
+        _current = _model.baroActive() ? CRSF_TELEMETRY_STATE_BARO : CRSF_TELEMETRY_STATE_HB;
         break;
       case CRSF_TELEMETRY_STATE_BARO:
         vario(f);
         send(f, s);
         _current = CRSF_TELEMETRY_STATE_HB;
         break;
-      case CRSF_TELEMETRY_STATE_HB:
+      default:    // In case of an invalid state, send heartbeat and continue loop
         heartbeat(f);
         send(f, s);
         _current = CRSF_TELEMETRY_STATE_ATTI;
@@ -73,15 +75,22 @@ public:
     return 1;
   }
 
-  int sendMsp(Device::SerialDevice& s, Connect::MspResponse r, uint8_t origin) const
+  int sendMsp(Device::SerialDevice& s, Connect::MspResponse resp, uint8_t origin)
   {
-    Rc::CrsfMessage msg;
+    size_t size = resp.serialize(_buff, sizeof(_buff));
+    const uint8_t* beg = _buff + 3;        // skip msp header
+    const uint8_t* end = _buff + size - 1; // skip crc
+    uint8_t version = resp.version == Connect::MSP_V1 ? 1 : 2;
+    size_t iter = 0;
+    Rc::CrsfMessage frame;
+    do
+    {
+      beg = Rc::Crsf::encodeMspData(frame, origin, version, _seq++, !iter, beg, end);
+      send(frame, s);
+      iter++;
+    } while(beg != end && iter < 4);
 
-    Rc::Crsf::encodeMsp(msg, r, origin);
-
-    send(msg, s);
-
-    return 1;
+    return iter;
   }
 
   void send(const Rc::CrsfMessage& msg, Device::SerialDevice& s) const
@@ -93,7 +102,7 @@ public:
   {
     if(angle < -Utils::pi()) angle += Utils::twoPi();
     if(angle >  Utils::pi()) angle -= Utils::twoPi();
-    return lrintf(angle * 1000);
+    return lrintf(angle * 10000);
   }
 
   void attitude(Rc::CrsfMessage& msg) const
@@ -164,8 +173,9 @@ public:
     // https://github.com/crsf-wg/crsf/wiki/CRSF_FRAMETYPE_BARO_ALTITUDE
     msg.prepare(Rc::CRSF_FRAMETYPE_BARO_ALTITUDE);
 
-    msg.writeU16(Utils::toBigEndian16(0)); // (cm + 10000) or (m + 0 | 0x8000)
-    msg.writeU16(Utils::toBigEndian16(0)); // cm/s
+    // Send barometer data
+    msg.writeU16(Utils::toBigEndian16((_model.state.baro.altitude * 10.0f) + 10000 )); // (dm + 10000) or (m + 0 | 0x8000)
+    msg.writeU16(Utils::toBigEndian16(_model.state.baro.vario * 100.0f)); // cm
 
     msg.finalize();
   }
@@ -182,6 +192,8 @@ public:
 private:
   Model& _model;
   mutable TelemetryState _current;
+  uint8_t _buff[256] = {0};
+  uint8_t _seq = 0;
 };
 
 }

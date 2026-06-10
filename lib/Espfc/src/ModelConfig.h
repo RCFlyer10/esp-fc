@@ -4,10 +4,10 @@
 #include "Target/Target.h"
 #include "EscDriver.h"
 #include "Utils/Filter.h"
-#include "Device/BusDevice.h"
+#include "Device/BusDevice.hpp"
 #include "Device/GyroDevice.h"
-#include "Device/MagDevice.h"
-#include "Device/BaroDevice.h"
+#include "Device/MagDevice.hpp"
+#include "Device/BaroDevice.hpp"
 #include "Device/SerialDevice.h"
 #include "Device/InputPPM.h"
 #include "Output/Mixers.h"
@@ -591,6 +591,7 @@ struct AccelConfig
   int8_t bus = BUS_AUTO;
   int8_t dev = GYRO_AUTO;
   int16_t bias[3] = { 0, 0, 0 };
+  int16_t trim[2] = { 0, 0 };
   FilterConfig filter{FILTER_BIQUAD, 15};
 };
 
@@ -675,9 +676,9 @@ struct GpsConfig
   uint8_t gnssMode = 0;          // 0=Auto, 1=GPS only, 2=GPS+GLO, 3=GPS+GAL, 4=GPS+BDS, 5=All
   uint8_t enableDualBand = 1;    // Enable L1+L5 dual-band on M10 (0=L1 only, 1=Auto/M10 dual-band)
   uint8_t enableGPS = 1;         // Enable GPS constellation
-  uint8_t enableGLONASS = 1;     // Enable GLONASS constellation
+  uint8_t enableGLONASS = 0;     // Enable GLONASS constellation
   uint8_t enableGalileo = 1;     // Enable Galileo constellation
-  uint8_t enableBeiDou = 1;      // Enable BeiDou constellation
+  uint8_t enableBeiDou = 0;      // Enable BeiDou constellation
   uint8_t enableQZSS = 1;        // Enable QZSS (Asia-Pacific)
   uint8_t enableSBAS = 1;        // Enable SBAS (WAAS/EGNOS)
 };
@@ -686,6 +687,11 @@ struct LedConfig
 {
   uint8_t invert = 0;
   int8_t type = 0;
+};
+
+struct ArmingConfig
+{
+  uint8_t smallAngle = 25;
 };
 
 // persistent data
@@ -704,6 +710,7 @@ class ModelConfig
     IBatConfig ibat;
     VtxConfig vtx;
     GpsConfig gps;
+    ArmingConfig arming;
 
     ActuatorCondition conditions[ACTUATOR_CONDITIONS];
     ScalerConfig scaler[SCALER_COUNT];

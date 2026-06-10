@@ -4,9 +4,7 @@
 #include <cstddef>
 #include "Hal/Pgm.h"
 
-namespace Espfc {
-
-namespace Connect {
+namespace Espfc::Connect {
 
 constexpr size_t MSP_BUF_SIZE = 192;
 constexpr size_t MSP_BUF_OUT_SIZE = 240;
@@ -61,6 +59,7 @@ public:
   uint8_t readU8();
   uint16_t readU16();
   uint32_t readU32();
+  uint16_t append(const uint8_t * data, size_t len);
 
   MspState state;
   MspType dir;
@@ -70,6 +69,7 @@ public:
   uint16_t expected;
   uint16_t received;
   uint16_t read;
+  uint8_t sequence;
   uint8_t checksum;
   uint8_t checksum2;
   uint8_t buffer[MSP_BUF_SIZE];
@@ -99,7 +99,5 @@ public:
   size_t serializeV1(uint8_t * buff, size_t len_max) const;
   size_t serializeV2(uint8_t * buff, size_t len_max) const;
 };
-
-}
 
 }

@@ -9,9 +9,7 @@
 // https://github.com/AlessioMorale/crsf_parser/tree/master
 // https://github.com/betaflight/betaflight/blob/master/src/main/rx/crsf.c
 
-namespace Espfc {
-
-namespace Device {
+namespace Espfc::Device {
 
 class InputCRSF: public InputDevice
 {
@@ -54,8 +52,7 @@ class InputCRSF: public InputDevice
     Rc::CrsfMessage _frame;
     uint16_t _channels[CHANNELS];
     uint32_t _telemetry_next;
+    Connect::MspMessage _msg;
 };
-
-}
 
 }

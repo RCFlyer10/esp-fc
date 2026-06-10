@@ -1,56 +1,35 @@
 # Development
 
-## Compile code
+## Building and flashing
 
 ```
-pio run -e lolin32
-```
-
-## Merge image
-
-This step is only required to prepare single image to upload through User Interface, like Web UI or Firmware flasher for ESP32 based chips.
-```
-python3 ~/.platformio/packages/tool-esptoolpy/esptool.py --chip ESP32 merge_bin -o .pio/build/lolin32/firmware_full.bin --target-offset 0x1000 --flash_mode dio --flash_freq 80m --flash_size 4MB 0x1000 .pio/build/lolin32/bootloader.bin 0x8000 .pio/build/lolin32/partitions.bin 0xe000 ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin 0x10000 .pio/build/lolin32/firmware.bin
-```
-
-## Flash device
-
-```
-pio run -e lolin32 -t upload
-```
-
-For ESP32 chip it expands to:
-```
-python3 ~/.platformio/packages/tool-esptoolpy/esptool.py --chip esp32 --port "/dev/ttyUSB0" --baud 921600 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size 4MB 0x1000 .pio/build/lolin32/bootloader.bin 0x8000 .pio/build/lolin32/partitions.bin 0xe000 ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin 0x10000 .pio/build/lolin32/firmware.bin
-```
-
-To flash merged file 
-
-```
-python3 ~/.platformio/packages/tool-esptoolpy/esptool.py --chip esp32 --port "/dev/ttyUSB0" --baud 921600 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size 4MB 0x1000 .pio/build/lolin32/firmware_full.bin
-```
-
-## Run unit tests
-
-```
-pio test -e native
+pio run                      # build all targets
+pio run -e <target>          # build specific target like: esp32,esp32s3,...
+pio run -e esp32 -t upload   # build and flash device
+pio test -e native           # run unit tests
+pio check                    # run static anlysis
+pio run -t check_format      # check code style
+pio run -e native -t format  # format code
 ```
 
 ## Docker
 
-If you don't want to install PlatformIO
+If you don't want to install PlatformIO, you can use Docker Environment
 
+general usage
 ```
-docker-compose run pio <pio command>
+docker compose run --rm espfc <pio command>
 ```
 
 examples
 
 ```
-docker-compose run pio pio run -e lolin32
-docker-compose run pio pio test -e native
+docker compose run --rm espfc pio run -e esp32
+docker compose run --rm espfc pio test -e native
 ```
-Keep in mind, that to be able to flash device, additional effort is required as by default docker is isolated enviroment devices are't accessible.
+
+> [!NOTE]
+> Keep in mind, that to be able to flash device, additional effort is required as by default docker is isolated enviroment devices are't accessible.
 
 ## VSCode
 
@@ -58,3 +37,56 @@ This project is based on [platformio](https://platformio.org/), it is recommende
 
 1. if you don't have VSCode yet? visit https://code.visualstudio.com/download
 2. then install https://platformio.org/install/ide?install=vscode
+
+## Contribution
+
+If you want to include your changes in this project, you need to make PR (Pull Request) on github.
+
+### How to contribute to Esp-fc project
+
+1. Fork the repository
+
+Click the Fork button on the project’s GitHub page to create your own copy.
+
+2. Clone your fork
+
+```
+git clone https://github.com/your-username/project-name.git
+```
+
+3. Create a new branch
+
+```
+git checkout -b feature/my-change
+```
+
+4. Make your changes
+
+- Edit files, add features, or fix bugs.
+- Run tests and static anlysis tools.
+- Collect eveidence that proves your changes do the job
+
+5. Commit your changes
+
+```
+git add .
+git commit -m "Add short description of changes"
+```
+
+6. Push the branch to your fork
+
+```
+git push origin feature/my-change
+```
+
+7. Open a Pull Request (PR)
+
+Go to your fork on GitHub and click Compare & pull request. Add a clear title and description, then submit the PR. Wait for review. Project maintainers may request changes before merging your contribution.
+
+### What requirements must be met for a PR to be accepted?
+
+1. Provide clear change description with reasoning what type of problem you are trying to resolve
+2. Provide evidence that feature you deliver works as expected and do not breaks any existing functionality
+3. Ensure that unittests are passing and static alanysis tools do not report any errors
+4. Avoid commiting unnecesary changes
+5. Untested changes will not be accepted

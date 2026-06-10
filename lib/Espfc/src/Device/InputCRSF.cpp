@@ -2,9 +2,7 @@
 #include "InputCRSF.h"
 #include "Utils/MemoryHelper.h"
 
-namespace Espfc {
-
-namespace Device {
+namespace Espfc::Device {
 
 using namespace Espfc::Rc;
 
@@ -84,7 +82,7 @@ void FAST_CODE_ATTR InputCRSF::parse(CrsfMessage& msg, int d)
       }
       break;
     case CRSF_SIZE:
-      if(c > 3 && c <= CRSF_PAYLOAD_SIZE_MAX)
+      if(c >= 2 && c <= CRSF_FRAME_SIZE_MAX - 2) // allowed size is in range 2-62
       {
         data[_idx++] = c;
         _state = CRSF_TYPE;
@@ -93,10 +91,14 @@ void FAST_CODE_ATTR InputCRSF::parse(CrsfMessage& msg, int d)
       }
       break;
     case CRSF_TYPE:
-      if(c == CRSF_FRAMETYPE_RC_CHANNELS_PACKED || c == CRSF_FRAMETYPE_LINK_STATISTICS || c == CRSF_FRAMETYPE_MSP_REQ)
+      if(c == CRSF_FRAMETYPE_RC_CHANNELS_PACKED || c == CRSF_FRAMETYPE_LINK_STATISTICS || c == CRSF_FRAMETYPE_MSP_REQ || c == CRSF_FRAMETYPE_MSP_WRITE)
       {
         data[_idx++] = c;
-        _state = CRSF_DATA;
+        if (msg.size > 2) {
+          _state = CRSF_DATA;
+        } else {
+          _state = CRSF_CRC; // no payload, next byte is crc
+        }
       } else {
         reset();
       }
@@ -138,6 +140,7 @@ void FAST_CODE_ATTR InputCRSF::apply(const CrsfMessage& msg)
       break;
 
     case CRSF_FRAMETYPE_MSP_REQ:
+    case CRSF_FRAMETYPE_MSP_WRITE:
       applyMspReq(msg);
       break;
 
@@ -148,36 +151,33 @@ void FAST_CODE_ATTR InputCRSF::apply(const CrsfMessage& msg)
 
 void FAST_CODE_ATTR InputCRSF::applyLinkStats(const CrsfMessage& msg)
 {
-  const CrsfLinkStats* stats = reinterpret_cast<const CrsfLinkStats*>(msg.payload);
+  const auto * stats = reinterpret_cast<const CrsfLinkStats*>(msg.payload);
   (void)stats;
   // TODO:
 }
 
 void FAST_CODE_ATTR InputCRSF::applyChannels(const CrsfMessage& msg)
 {
-  const CrsfData* data = reinterpret_cast<const CrsfData*>(msg.payload);
+  const auto * data = reinterpret_cast<const CrsfData*>(msg.payload);
   Crsf::decodeRcDataShift8(_channels, data);
   //Crsf::decodeRcData(_channels, frame);
   _new_data = true;
 }
 
-void FAST_CODE_ATTR InputCRSF::applyMspReq(const CrsfMessage& msg)
+void FAST_CODE_ATTR InputCRSF::applyMspReq(const CrsfMessage& frame)
 {
   if(!_telemetry) return;
 
-  uint8_t origin;
-  Connect::MspMessage m;
+  uint8_t origin = 0;
 
-  Crsf::decodeMsp(msg, m, origin);
+  Crsf::decodeMsp(frame, _msg, origin);
 
-  if(m.isCmd() && m.isReady())
+  if(_msg.isCmd() && _msg.isReady())
   {
-    _telemetry->processMsp(*_serial, TELEMETRY_PROTOCOL_CRSF, m, origin);
+    _telemetry->processMsp(*_serial, TELEMETRY_PROTOCOL_CRSF, _msg, origin);
   }
 
   _telemetry_next = micros() + TELEMETRY_INTERVAL;
-}
-
 }
 
 }

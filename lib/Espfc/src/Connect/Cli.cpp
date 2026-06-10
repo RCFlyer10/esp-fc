@@ -413,6 +413,8 @@ const Cli::Param * Cli::initialize(ModelConfig& c)
     Param(PSTR("accel_offset_x"), &c.accel.bias[0]),
     Param(PSTR("accel_offset_y"), &c.accel.bias[1]),
     Param(PSTR("accel_offset_z"), &c.accel.bias[2]),
+    Param(PSTR("accel_trim_roll"), &c.accel.trim[1]),
+    Param(PSTR("accel_trim_pitch"), &c.accel.trim[0]),
 
     Param(PSTR("mag_bus"), &c.mag.bus, busDevChoices),
     Param(PSTR("mag_dev"), &c.mag.dev, magDevChoices),
@@ -515,6 +517,8 @@ const Cli::Param * Cli::initialize(ModelConfig& c)
 
     Param(PSTR("failsafe_delay"), &c.failsafe.delay),
     Param(PSTR("failsafe_kill_switch"), &c.failsafe.killSwitch),
+
+    Param(PSTR("arming_small_angle"), &c.arming.smallAngle),
 
     Param(PSTR("vtx_power"), &c.vtx.power),
     Param(PSTR("vtx_channel"), &c.vtx.channel),
@@ -1601,11 +1605,11 @@ void Cli::printGpsStatus(Stream& s, bool full) const
     s.println(F(")"));
 
     s.print(F("  Dist: "));
-    s.print(_model.state.gps.distanceToHome);
+    s.print(Utils::toDeg(_model.state.gps.distanceToHome), 2);
     s.println(F(" m"));
 
     s.print(F("  Bear: "));
-    s.print(_model.state.gps.directionToHome);
+    s.print(Utils::toDeg(_model.state.gps.directionToHome), 2);
     s.println(F(" deg"));
   }
   else

@@ -354,12 +354,15 @@ enum GpsDeviceVersion
 struct GpsSupportState
 {
   GpsDeviceVersion version = GPS_UNKNOWN;
+  bool gps = false;
   bool glonass = false;
   bool galileo = false;
   bool beidou = false;
   bool sbas = false;
   bool qzss = false;
-  bool dualBand = false;
+  bool gpsL5 = false;
+  bool imes = false;
+  uint8_t protVerMajor = 0; // parsed from MON-VER "PROTVER=XX.XX" ext string
 };
 
 template<typename T>
@@ -463,8 +466,8 @@ struct GpsState
   GpsAccuracy accuracy;
   GpsDateTime dateTime;
   GpsSatelite svinfo[SAT_MAX];
-  uint16_t distanceToHome = 0;
-  int16_t directionToHome = 0;
+  float distanceToHome = 0;
+  float directionToHome = 0;
   bool isHomeValid() const { return homeSet && fix && fixType >= 2; }
 };
 
@@ -482,6 +485,7 @@ struct ModelState
 
   AttitudeState attitude;
   RotationMatrixFloat boardAlignment;
+  RotationMatrixFloat trimRotation;
 
   AltitudeState altitude;
 

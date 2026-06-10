@@ -5,9 +5,7 @@
 #include "Utils/MemoryHelper.h"
 #include <cstring>
 
-namespace Espfc {
-
-namespace Rc {
+namespace Espfc::Rc {
 
 void FAST_CODE_ATTR Crsf::decodeRcData(uint16_t* channels, const CrsfData* frame)
 {
@@ -92,77 +90,128 @@ void Crsf::encodeRcData(CrsfMessage& msg, const CrsfData& data)
   msg.payload[sizeof(data)] = crc(msg);
 }
 
-int Crsf::encodeMsp(CrsfMessage& msg, const Connect::MspResponse& resp, uint8_t origin)
+const uint8_t* Crsf::encodeMspData(CrsfMessage& msg, uint8_t origin, uint8_t version, uint8_t seq, bool start, const uint8_t* begin, const uint8_t* end)
 {
-  uint8_t buff[CRSF_PAYLOAD_SIZE_MAX];
-  size_t size = resp.serialize(buff, CRSF_PAYLOAD_SIZE_MAX);
-
-  if(size < 4) return 0; // unable to serialize
+  auto fragmentEnd = std::min(begin + CRSF_PAYLOAD_SIZE_MAX - 1, end); // preserve space for crc
 
   uint8_t status = 0;
-  status |= (1 << 4); // start bit
-  status |= ((resp.version == Connect::MSP_V1 ? 1 : 2) << 5);
+  status |= (seq & CRSF_MSP_STATUS_SEQ_MASK); // sequence number
+  status |= start ? (1 << 4) : 0; // start bit
+  status |= ((version << 5) & CRSF_MSP_STATUS_VERSION_MASK); // msp version (1 or 2)
 
   msg.prepare(Rc::CRSF_FRAMETYPE_MSP_RESP);
   msg.writeU8(origin);
   msg.writeU8(Rc::CRSF_ADDRESS_FLIGHT_CONTROLLER);
   msg.writeU8(status);
-  msg.write(buff + 3, size - 4); // skip sync bytes and crc
+  msg.write(begin, fragmentEnd - begin);
   msg.finalize();
 
-  return msg.size;
+  return fragmentEnd;
 }
 
-int Crsf::decodeMsp(const CrsfMessage& msg, Connect::MspMessage& m, uint8_t& origin)
+template<typename HeaderType>
+static inline void fillMessage(const CrsfMessage& frame, Connect::MspMessage& m, Connect::MspVersion version)
 {
-  //uint8_t dst = msg.payload[0];
-  origin = msg.payload[1];
-  uint8_t status = msg.payload[2];
+  // Payload structure: [dst, origin, flags, msp_header, msp_data...]
+  // Available MSP data (after header) = frame.size - 5 (type,dst,origin,flags,crc) - sizeof(header)
+  const auto * hdr = reinterpret_cast<const HeaderType*>(frame.payload + 3);
+  const size_t framePayloadSize = frame.size - 5 - sizeof(HeaderType);
+  m.cmd = hdr->cmd;
+  m.version = version;
+  m.dir = Connect::MSP_TYPE_CMD;
+  m.expected = hdr->size;
+  m.append(frame.payload + 3 + sizeof(HeaderType), std::min(framePayloadSize, (size_t)hdr->size)); // skip dst, origin, status and msp header
+  if(m.expected == m.received)
+  {
+    m.state = Connect::MSP_STATE_RECEIVED;
+  }
+}
 
-  //uint8_t sequence = (status & 0x0f);      // 00001111
-  uint8_t start    = (status & 0x10) >> 4;   // 00010000
-  uint8_t version  = (status & 0x60) >> 5;   // 01100000
-  //uint8_t error    = (status & 0x80) >> 7; // 10000000
+int FAST_CODE_ATTR Crsf::decodeMsp(const CrsfMessage& frame, Connect::MspMessage& m, uint8_t& origin)
+{
+  // 0x7A, 0x7C
+  //   CRSF frame which wraps MSP request (‘$M<’ or ‘$X<’)
+  //   Supported by Betaflight devices
+  //   Supported devices will respond with 0x7B
+
+  // 0x7B
+  //   CRSF frame which wraps MSP response (‘$M>’,’$X>’,‘$M!’,’$X!’)
+  //   Supported by Betaflight devices
+  //   Supported device will send this frame in response of MSP_Request (0x7A)
+
+  // MSP frame over CRSF Payload packing:
+  //   MSP frame is stripped from header ($ + M/X + [/]/!) and CRC
+  //   Resulted MSP-body might be divided in chunks if it doesn't fit in one CRSF-frame.
+  //   A ‘Status’ byte is put before MSP-body in each CRSF-frame.
+  //   Status byte consists of three parts:
+  //     bits 0-3 represent cyclic sequence number of the CRSF frame;
+  //     bit 4 checks if current MSP chunk is the beginning (or only) of a new frame (1 if true);
+  //     bits 5-6 represent the version number of MSP protocol (1 or 2 currently);
+  //     bit 7 represents an error (for response only).
+  //   Chunk size of the MSP-body is calculated from size of CRSF frame. But size of the MSP-body 
+  //     must be parsed from the MSP-body itself (with respect to MSP version and Jumbo-frame).
+  //   The last/only CRSF-frame might be longer than needed. In such a case, the extra bytes must be ignored.
+  //   Maximum chunk size is defined by maximum length of CRSF frame 64 bytes, therefore, maximum MSP-chunk length is 57 bytes. 
+  //     Minimum chunk length might by anything, but the first chunk must consist of size and function ID (i.e., 5 bytes for MSPv2).
+  //   CRC of the MSP frame is not sent because it’s already protected by CRC of CRSF. If MSP CRC is needed, 
+  //     it should be calculated at the receiving point.
+  //   MSP-response must be sent to the origin of the MSP-request. It means that [destination] and [origin] bytes of CRSF-header 
+  //     in response must be the same as in request but swapped.
+  // see https://github.com/betaflight/betaflight/blob/master/src/main/telemetry/msp_shared.c#L175
+  //     https://github.com/betaflight/betaflight/blob/538564bbe3eb226d5eac2e3387401bca7c6fdb90/src/main/telemetry/msp_shared.c#L175
+
+  // frame: <sync><size><type>[<dst><origin><flags>{msp}]<crc>
+  //uint8_t dst = msg.payload[0];
+  origin = frame.payload[1];
+  uint8_t status = frame.payload[2];
+
+  uint8_t sequence = (status & CRSF_MSP_STATUS_SEQ_MASK);          // 00001111
+  uint8_t start    = (status & CRSF_MSP_STATUS_START_MASK) >> 4;   // 00010000
+  uint8_t version  = (status & CRSF_MSP_STATUS_VERSION_MASK) >> 5; // 01100000
+  //uint8_t error    = (status & CRSF_MSP_STATUS_ERROR_MASK) >> 7; // 10000000
 
   if(start)
   {
+    // reset message on start
+    m.state = Connect::MSP_STATE_IDLE;
+    m.received = 0;
+    m.expected = 0;
     if(version == 1)
     {
-      const Connect::MspHeaderV1 * hdr = reinterpret_cast<const Connect::MspHeaderV1*>(msg.payload + 3);
-      size_t framePayloadSize = msg.size - 5 - sizeof(Connect::MspHeaderV1);
-      if(framePayloadSize >= hdr->size)
-      {
-        m.expected = hdr->size;
-        m.received = hdr->size;
-        m.cmd = hdr->cmd;
-        m.state = Connect::MSP_STATE_RECEIVED;
-        m.dir = Connect::MSP_TYPE_CMD;
-        m.version = Connect::MSP_V1;
-        std::copy_n(msg.payload + 3 + sizeof(Connect::MspHeaderV1), m.received, m.buffer);
-      }
+      fillMessage<Connect::MspHeaderV1>(frame, m, Connect::MSP_V1);
     }
     else if(version == 2)
     {
-      const Connect::MspHeaderV2 * hdr = reinterpret_cast<const Connect::MspHeaderV2*>(msg.payload + 3);
-      size_t framePayloadSize = msg.size - 5 - sizeof(Connect::MspHeaderV2);
-      if(framePayloadSize >= hdr->size)
-      {
-        m.expected = hdr->size;
-        m.received = hdr->size;
-        m.cmd = hdr->cmd;
-        m.state = Connect::MSP_STATE_RECEIVED;
-        m.dir = Connect::MSP_TYPE_CMD;
-        m.version = Connect::MSP_V1;
-        std::copy_n(msg.payload + 3 + sizeof(Connect::MspHeaderV2), m.received, m.buffer);
-      }
+      fillMessage<Connect::MspHeaderV2>(frame, m, Connect::MSP_V2);
     }
   }
   else
   {
-    // next chunk
+    // next chunks - continuation of fragmented message
+    if(sequence == ((m.sequence + 1) & CRSF_MSP_STATUS_SEQ_MASK))
+    {
+      size_t framePayloadSize = std::min(frame.size - 5, m.expected - m.received); // skip dst, origin, status;
+      if(m.received + framePayloadSize <= Connect::MSP_BUF_SIZE)
+      {
+        m.append(frame.payload + 3, framePayloadSize);
+        if(m.received == m.expected)
+        {
+          m.state = Connect::MSP_STATE_RECEIVED;
+        }
+      }
+    }
+    else
+    {
+      // sequence mismatch - reset message
+      m.state = Connect::MSP_STATE_IDLE;
+      m.received = 0;
+      m.expected = 0;
+    }
   }
 
-  return 0;
+  m.sequence = sequence;
+
+  return m.state == Connect::MSP_STATE_RECEIVED ? 1 : 0;
 }
 
 uint16_t Crsf::convert(int v)
@@ -187,11 +236,9 @@ uint8_t Crsf::crc(const CrsfMessage& msg)
   // CRC includes type and payload
   uint8_t crc = Utils::crc8_dvb_s2(0, msg.type);
   for (int i = 0; i < msg.size - 2; i++) { // size includes type and crc
-      crc = Utils::crc8_dvb_s2(crc, msg.payload[i]);
+    crc = Utils::crc8_dvb_s2(crc, msg.payload[i]);
   }
   return crc;
-}
-
 }
 
 }

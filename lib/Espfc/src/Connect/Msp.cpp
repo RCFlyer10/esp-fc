@@ -1,12 +1,11 @@
 #include "Connect/Msp.hpp"
 #include "Hal/Pgm.h"
 #include "Utils/Crc.hpp"
+#include <algorithm>
 
-namespace Espfc {
+namespace Espfc::Connect {
 
-namespace Connect {
-
-MspMessage::MspMessage(): state(MSP_STATE_IDLE), expected(0), received(0), read(0) {}
+MspMessage::MspMessage(): state(MSP_STATE_IDLE), expected(0), received(0), read(0), sequence(0) {}
 
 bool MspMessage::isReady() const
 {
@@ -54,6 +53,13 @@ uint32_t MspMessage::readU32()
   ret |= readU8() << 16;
   ret |= readU8() << 24;
   return ret;
+}
+
+uint16_t MspMessage::append(const uint8_t * data, size_t len)
+{
+  std::copy(data, data + len, buffer + received);
+  received += len;
+  return received;
 }
 
 MspResponse::MspResponse(): len(0) {}
@@ -167,8 +173,6 @@ size_t MspResponse::serializeV2(uint8_t * buff, size_t len_max) const
   buff[i] = checksum;
 
   return i + 1;
-}
-
 }
 
 }

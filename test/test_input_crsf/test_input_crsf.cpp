@@ -49,6 +49,37 @@ void test_input_crsf_rc_valid()
   TEST_ASSERT_EQUAL_UINT16(1000u, input.get(5));
 }
 
+void test_input_crsf_rc_valid_no_payload()
+{
+  InputCRSF input;
+  CrsfMessage frame;
+  memset(&frame, 0, sizeof(frame));
+  uint8_t * frame_data = reinterpret_cast<uint8_t*>(&frame);
+
+  When(Method(ArduinoFake(), micros)).Return(0);
+
+  input.begin(nullptr, nullptr);
+
+  const uint8_t data[] = {
+    0xC8, 0x02, 0x16, 0xD3
+  };
+  for (size_t i = 0; i < sizeof(data); i++) {
+    input.parse(frame, data[i]);
+  }
+
+  for (size_t i = 0; i < sizeof(data); i++) {
+    TEST_ASSERT_EQUAL_UINT8(data[i], frame_data[i]);
+  }
+
+  const uint8_t crc = Crsf::crc(frame);
+  TEST_ASSERT_EQUAL_UINT8(0xD3, crc);
+  TEST_ASSERT_EQUAL_UINT8(0xD3, frame.crc());
+
+  TEST_ASSERT_EQUAL_UINT8(CRSF_ADDRESS_FLIGHT_CONTROLLER, frame.addr);
+  TEST_ASSERT_EQUAL_UINT8(0x02, frame.size);
+  TEST_ASSERT_EQUAL_UINT8(CRSF_FRAMETYPE_RC_CHANNELS_PACKED, frame.type);
+}
+
 void test_input_crsf_rc_prefix()
 {
   InputCRSF input;
@@ -297,6 +328,25 @@ void test_crsf_decode_rc_shift8()
   TEST_ASSERT_EQUAL_UINT16(1500, channels[15]);
 }*/
 
+void test_crsf_encode_tlm()
+{
+  CrsfMessage frame;
+  memset(&frame, 0, sizeof(frame));
+
+  frame.prepare(CRSF_FRAMETYPE_HEARTBEAT);
+  frame.writeU8(0x01);
+  frame.finalize();
+
+  TEST_ASSERT_EQUAL_UINT8(0xC8, frame.addr); // addr
+  TEST_ASSERT_EQUAL_UINT8(0x03, frame.size); // size
+  TEST_ASSERT_EQUAL_UINT8(0x0B, frame.type); // type: heartbeat
+  TEST_ASSERT_EQUAL_UINT8(0x01, frame.payload[0]); // payload
+  TEST_ASSERT_EQUAL_UINT8(0x90, frame.payload[1]); // crc
+
+  const uint8_t crc = Crsf::crc(frame);
+  TEST_ASSERT_EQUAL_UINT8(0x90, crc);
+}
+
 void test_crsf_encode_msp_v1()
 {
   CrsfMessage frame;
@@ -310,7 +360,14 @@ void test_crsf_encode_msp_v1()
   resp.writeU8(2);
   resp.writeU8(3);
 
-  Crsf::encodeMsp(frame, resp, CRSF_ADDRESS_RADIO_TRANSMITTER);
+  uint8_t buff[255];
+  size_t size = resp.serialize(buff, sizeof(buff));
+  const uint8_t* beg = buff + 3;        // skip msp header
+  const uint8_t* end = buff + size - 1; // skip crc
+  uint8_t seq = 0;
+
+  beg = Crsf::encodeMspData(frame, CRSF_ADDRESS_RADIO_TRANSMITTER, 1, seq++, true, beg, end);
+  TEST_ASSERT_TRUE(beg == end);
 
   // crsf headers
   TEST_ASSERT_EQUAL_UINT8(CRSF_ADDRESS_FLIGHT_CONTROLLER, frame.addr);
@@ -335,6 +392,73 @@ void test_crsf_encode_msp_v1()
   TEST_ASSERT_EQUAL_UINT8(0x6D, frame.crc());
 }
 
+void test_crsf_encode_msp_v1_fragmented()
+{
+  CrsfMessage frame;
+  memset(&frame, 0, sizeof(frame));
+
+  Connect::MspResponse resp;
+  resp.version = Connect::MSP_V1;
+  resp.cmd = MSP_API_VERSION;
+  resp.result = 0;
+  for(size_t i = 0; i < 64; i++)
+  {
+    resp.writeU8(i);
+  }
+
+  uint8_t buff[255];
+  size_t size = resp.serialize(buff, sizeof(buff));
+  const uint8_t* beg = buff + 3;        // skip msp header
+  const uint8_t* end = buff + size - 1; // skip crc
+  uint8_t seq = 0;
+
+  beg = Crsf::encodeMspData(frame, CRSF_ADDRESS_RADIO_TRANSMITTER, 1, seq++, true, beg, end);
+  TEST_ASSERT_FALSE(beg == end);
+
+  // crsf headers
+  TEST_ASSERT_EQUAL_UINT8(CRSF_ADDRESS_FLIGHT_CONTROLLER, frame.addr);
+  TEST_ASSERT_EQUAL_UINT8(62, frame.size);
+  TEST_ASSERT_EQUAL_UINT8(CRSF_FRAMETYPE_MSP_RESP, frame.type);
+
+  // crsf ext headers
+  TEST_ASSERT_EQUAL_UINT8(0xEA, frame.payload[0]); // radio-transmitter
+  TEST_ASSERT_EQUAL_UINT8(0xC8, frame.payload[1]); // FC
+  TEST_ASSERT_EQUAL_UINT8(0x30, frame.payload[2]); // status
+
+  // ext msp v1 header
+  TEST_ASSERT_EQUAL_UINT8(64, frame.payload[3]); // size
+  TEST_ASSERT_EQUAL_UINT8( 1, frame.payload[4]); // type // api_version(1)
+
+  // ext msp payload
+  TEST_ASSERT_EQUAL_UINT8(0, frame.payload[5]); // param0
+  TEST_ASSERT_EQUAL_UINT8(1, frame.payload[6]); // param1
+  TEST_ASSERT_EQUAL_UINT8(2, frame.payload[7]); // param2
+
+  // crsf crc
+  TEST_ASSERT_EQUAL_UINT8(0xFE, frame.crc());
+
+  beg = Crsf::encodeMspData(frame, CRSF_ADDRESS_RADIO_TRANSMITTER, 1, seq++, false, beg, end);
+  TEST_ASSERT_TRUE(beg == end);
+
+  // crsf headers
+  TEST_ASSERT_EQUAL_UINT8(CRSF_ADDRESS_FLIGHT_CONTROLLER, frame.addr);
+  TEST_ASSERT_EQUAL_UINT8(14, frame.size);
+  TEST_ASSERT_EQUAL_UINT8(CRSF_FRAMETYPE_MSP_RESP, frame.type);
+
+  // crsf ext headers
+  TEST_ASSERT_EQUAL_UINT8(0xEA, frame.payload[0]); // radio-transmitter
+  TEST_ASSERT_EQUAL_UINT8(0xC8, frame.payload[1]); // FC
+  TEST_ASSERT_EQUAL_UINT8(0x21, frame.payload[2]); // status
+
+  // ext msp payload
+  TEST_ASSERT_EQUAL_UINT8(55, frame.payload[3]); // param55
+  TEST_ASSERT_EQUAL_UINT8(56, frame.payload[4]); // param56
+  TEST_ASSERT_EQUAL_UINT8(57, frame.payload[5]); // param57
+
+  // crsf crc
+  TEST_ASSERT_EQUAL_UINT8(0x73, frame.crc());
+}
+
 void test_crsf_encode_msp_v2()
 {
   CrsfMessage frame;
@@ -348,7 +472,14 @@ void test_crsf_encode_msp_v2()
   resp.writeU8(2);
   resp.writeU8(3);
 
-  Crsf::encodeMsp(frame, resp, CRSF_ADDRESS_RADIO_TRANSMITTER);
+  uint8_t buff[255];
+  size_t size = resp.serialize(buff, sizeof(buff));
+  const uint8_t* beg = buff + 3;        // skip msp header
+  const uint8_t* end = buff + size - 1; // skip crc
+  uint8_t seq = 0xff;
+
+  beg = Crsf::encodeMspData(frame, CRSF_ADDRESS_RADIO_TRANSMITTER, 2, seq, true, beg, end);
+  TEST_ASSERT_TRUE(beg == end);
 
   // crsf headers
   TEST_ASSERT_EQUAL_UINT8(CRSF_ADDRESS_FLIGHT_CONTROLLER, frame.addr);
@@ -358,7 +489,7 @@ void test_crsf_encode_msp_v2()
   // crsf ext headers
   TEST_ASSERT_EQUAL_UINT8(0xEA, frame.payload[0]); // radio-transmitter addr
   TEST_ASSERT_EQUAL_UINT8(0xC8, frame.payload[1]); // FC addr
-  TEST_ASSERT_EQUAL_UINT8(0x50, frame.payload[2]); // status flags
+  TEST_ASSERT_EQUAL_UINT8(0x5F, frame.payload[2]); // status flags
 
   // ext msp v2 header
   TEST_ASSERT_EQUAL_UINT8(0, frame.payload[3]); // flags
@@ -373,12 +504,12 @@ void test_crsf_encode_msp_v2()
   TEST_ASSERT_EQUAL_UINT8(3, frame.payload[10]); // param3
 
   // crsf crc
-  TEST_ASSERT_EQUAL_UINT8(0xF8, frame.crc());
+  TEST_ASSERT_EQUAL_UINT8(0x10, frame.crc());
 }
 
 void test_crsf_decode_msp_v1()
 {
-   const uint8_t data[] = {
+  const uint8_t data[] = {
     0xc8, 0x08, 0x7a, 0xc8, 0xea, 0x32, 0x00, 0x70, 0x70, 0x4b
   };
   CrsfMessage frame; 
@@ -399,15 +530,97 @@ void test_crsf_decode_msp_v1()
   TEST_ASSERT_EQUAL_UINT8(0xEA, frame.payload[1]); // radio-transmitter addr (origin)
   TEST_ASSERT_EQUAL_UINT8(0x32, frame.payload[2]); // status flags
 
-  // ext msp v2 header
+  // ext msp v1 header
   TEST_ASSERT_EQUAL_UINT8(0x00, frame.payload[3]); // size
   TEST_ASSERT_EQUAL_UINT8(0x70, frame.payload[4]); // type: msp_pid(0x70)
+
+  // ext msp payload
+  TEST_ASSERT_TRUE(m.isReady());
+  TEST_ASSERT_EQUAL_UINT8(Connect::MSP_V1, m.version);
+  TEST_ASSERT_EQUAL_UINT8(0, m.received);
+  TEST_ASSERT_EQUAL_UINT8(0x70, m.cmd);
 
   // crsf crc
   TEST_ASSERT_EQUAL_UINT8(0x4B, frame.crc());
 
   // origin
   TEST_ASSERT_EQUAL_UINT8(0xEA, origin);
+}
+
+void test_csrf_decode_msp_v1_fragmented()
+{
+  // generate example msp message into buffer
+  uint8_t buff[64] = {0};
+  Connect::MspResponse resp;
+  resp.version = Connect::MSP_V1;
+  resp.cmd = MSP_API_VERSION;
+  resp.result = 0;
+  for (uint8_t i = 0; i < 32; i++)
+  {
+    resp.writeU8(i);
+  }
+  resp.serialize(buff, sizeof(buff));
+
+  // we need only range from 3 to 37
+  const size_t dataLen = 34;
+  const uint8_t *dataPtr = buff + 3; // skip msp header ($M<)
+  const uint8_t flags1 = (1 << 5) | (1 << 4) | 0x00; // v(1) + start(1) + sequence(0)
+  const uint8_t flags2 = (1 << 5) | (0 << 4) | 0x01; // v(1) + start(0) + sequence(1)
+  const uint8_t dst = CRSF_ADDRESS_FLIGHT_CONTROLLER;
+  const uint8_t src = CRSF_ADDRESS_RADIO_TRANSMITTER;
+
+  // create first fragmented frame
+  CrsfMessage frame1;
+  frame1.prepare(CRSF_FRAMETYPE_MSP_REQ);
+  frame1.writeU8(dst);
+  frame1.writeU8(src);
+  frame1.writeU8(flags1);
+  for (size_t i = 0; i < 17; i++)
+  {
+    frame1.writeU8(dataPtr[i]);
+  }
+  frame1.finalize();
+  TEST_ASSERT_EQUAL_UINT8(22, frame1.size);
+
+  // create second fragmented frame
+  CrsfMessage frame2;
+  frame2.prepare(CRSF_FRAMETYPE_MSP_REQ);
+  frame2.writeU8(dst);
+  frame2.writeU8(src);
+  frame2.writeU8(flags2);
+  for (size_t i = 17; i < dataLen; i++)
+  {
+    frame2.writeU8(dataPtr[i]);
+  }
+  frame2.finalize();
+  TEST_ASSERT_EQUAL_UINT8(22, frame2.size);
+
+  // decode first frame
+  Connect::MspMessage m;
+  uint8_t origin = 0;
+
+  Crsf::decodeMsp(frame1, m, origin);
+
+  TEST_ASSERT_FALSE(m.isReady()); // not ready until we get the rest of the data
+  TEST_ASSERT_TRUE(m.isCmd());
+
+  // decode second frame
+  Crsf::decodeMsp(frame2, m, origin);
+
+  // assert that we receied same message that is valid and complete
+  TEST_ASSERT_TRUE(m.isReady());
+  TEST_ASSERT_TRUE(m.isCmd());
+  TEST_ASSERT_EQUAL_UINT8(Connect::MSP_V1, m.version);
+  TEST_ASSERT_EQUAL_UINT8(MSP_API_VERSION, m.cmd);
+  TEST_ASSERT_EQUAL_UINT8(32, m.received);
+  TEST_ASSERT_EQUAL_UINT8(32, m.expected);
+
+  for (uint8_t i = 0; i < 32; i++)
+  {
+    TEST_ASSERT_EQUAL_UINT8(i, m.buffer[i]);
+  }
+
+  TEST_ASSERT_EQUAL_UINT8(src, origin);
 }
 
 void test_input_ibus_rc_valid()
@@ -484,14 +697,18 @@ int main(int argc, char **argv)
 {
   UNITY_BEGIN();
   RUN_TEST(test_input_crsf_rc_valid);
+  RUN_TEST(test_input_crsf_rc_valid_no_payload);
   RUN_TEST(test_input_crsf_rc_prefix);
   RUN_TEST(test_crsf_encode_rc);
   RUN_TEST(test_crsf_decode_rc_struct);
   RUN_TEST(test_crsf_decode_rc_shift8);
   //RUN_TEST(test_crsf_decode_rc_shift32);
+  RUN_TEST(test_crsf_encode_tlm);
   RUN_TEST(test_crsf_encode_msp_v1);
+  RUN_TEST(test_crsf_encode_msp_v1_fragmented);
   RUN_TEST(test_crsf_encode_msp_v2);
   RUN_TEST(test_crsf_decode_msp_v1);
+  RUN_TEST(test_csrf_decode_msp_v1_fragmented);
   RUN_TEST(test_input_ibus_rc_valid);
 
   return UNITY_END();

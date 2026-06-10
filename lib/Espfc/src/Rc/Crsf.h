@@ -5,9 +5,7 @@
 #include "Utils/Crc.hpp"
 #include "Connect/Msp.hpp"
 
-namespace Espfc {
-
-namespace Rc {
+namespace Espfc::Rc {
 
 enum { CRSF_SYNC_BYTE = 0xC8 };
 enum { CRSF_FRAME_SIZE_MAX = 64 }; // 62 bytes frame plus 2 bytes frame header(<length><type>)
@@ -119,24 +117,23 @@ struct CrsfMessage
   uint8_t addr; // CrsfAddress
   uint8_t size; // counts size after this byte, so it must be the payload size + 2 (type and crc)
   uint8_t type; // CrsfFrameType
-  uint8_t payload[CRSF_PAYLOAD_SIZE_MAX + 1];
+  uint8_t payload[CRSF_PAYLOAD_SIZE_MAX + 1]; // +1 for crc
 
   void prepare(uint8_t t)
   {
     addr = Rc::CRSF_SYNC_BYTE;
     type = t;
-    size = 0;
+    size = 2;
   }
 
   void finalize()
   {
-    size += 2;
     writeCRC(crc());
   }
 
   void writeU8(uint8_t v)
   {
-    payload[size++] = v;
+    payload[size++ - 2] = v;
   }
 
   void writeU16(uint16_t v)
@@ -183,12 +180,15 @@ public:
   static void decodeRcDataShift8(uint16_t* channels, const CrsfData* frame);
   //static void decodeRcDataShift32(uint16_t* channels, const CrsfData* frame);
   static void encodeRcData(CrsfMessage& frame, const CrsfData& data);
-  static int encodeMsp(CrsfMessage& msg, const Connect::MspResponse& res, uint8_t origin);
-  static int decodeMsp(const CrsfMessage& msg, Connect::MspMessage& m, uint8_t& origin);
+  static const uint8_t* encodeMspData(CrsfMessage& msg, uint8_t origin, uint8_t version, uint8_t seq, bool start, const uint8_t* begin, const uint8_t* end);
+  static int decodeMsp(const CrsfMessage& frame, Connect::MspMessage& m, uint8_t& origin);
   static uint16_t convert(int v);
   static uint8_t crc(const CrsfMessage& frame);
-};
 
-}
+  static constexpr uint8_t CRSF_MSP_STATUS_SEQ_MASK = 0x0F;
+  static constexpr uint8_t CRSF_MSP_STATUS_START_MASK = 0x10;
+  static constexpr uint8_t CRSF_MSP_STATUS_VERSION_MASK = 0x60;
+  static constexpr uint8_t CRSF_MSP_STATUS_ERROR_MASK = 0x80;
+};
 
 }
