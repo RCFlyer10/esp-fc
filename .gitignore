@@ -41,3 +41,4 @@
 
 src/version_generated.cpp
 .last_hash_*
+version.txt
