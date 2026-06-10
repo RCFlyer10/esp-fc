@@ -40,3 +40,10 @@
 .pio/
 .cache/
 compile_commands.json
+
+# Build artifacts and caches
+.pio/
+.last_hash_*
+src/version_generated.cpp
+.last_hash_esp32
+src/version_generated.cpp
