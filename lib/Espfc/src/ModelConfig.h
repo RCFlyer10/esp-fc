@@ -410,6 +410,38 @@ struct InputChannelConfig
   int16_t fsValue = 1500;
 };
 
+struct ThrottleConfig {
+  uint8_t mid = 50;   
+  uint8_t expo = 0;   
+  int8_t throttleLimitType = 0;
+  uint8_t throttleLimitPercent = 100;
+};
+
+struct ControllerConfig
+{
+  int8_t tpaScale = 10;
+  int16_t tpaBreakpoint = 1650;
+};
+
+struct RateProfile 
+{
+  int8_t expo[3] = { 0, 0, 0 };
+  int8_t rate[3] = { 20, 20, 30 };
+  int8_t superRate[3] = { 40, 40, 36 };  
+  int8_t rateType = 3;
+
+  ThrottleConfig throttleConfig;
+  ControllerConfig controllerConfig;
+};
+
+struct RatesConfig
+{
+  RateProfile rateProfile[3];
+  int16_t rateLimit[3] = { 1998, 1998, 1998 };
+  int8_t activeRateProfile = 0;
+  bool updateAvailable = false; 
+};
+
 struct InputConfig
 {
   int8_t ppmMode = PPM_MODE_NORMAL;
@@ -430,11 +462,7 @@ struct InputConfig
   FilterConfig filter{FILTER_PT3, 0};
   FilterConfig filterDerivative{FILTER_PT3, 0};
 
-  uint8_t expo[3] = { 0, 0, 0 };
-  uint8_t rate[3] = { 20, 20, 30 };
-  uint8_t superRate[3] = { 40, 40,  36 };
-  int16_t rateLimit[3] = { 1998, 1998, 1998 };
-  int8_t rateType = 3;
+  RatesConfig rates;
 
   uint8_t rssiChannel = 0;
 
@@ -653,12 +681,6 @@ struct MixerConfiguration
   bool yawReverse = 0;
 };
 
-struct ControllerConfig
-{
-  int8_t tpaScale = 10;
-  int16_t tpaBreakpoint = 1650;
-};
-
 struct VtxConfig
 {
   uint8_t channel = 0x8;
@@ -693,6 +715,51 @@ struct ArmingConfig
 {
   uint8_t smallAngle = 25;
 };
+
+enum AjustmentFunctions {
+  NONE = 0,
+  RC_RATE = 1,
+  RC_EXPO = 2,
+  THROTTLE_EXPO = 3,
+  PITCH_ROLL_RATE = 4,
+  YAW_RATE = 5,
+  PITCH_ROLL_P = 6,
+  PITCH_ROLL_I = 7,
+  PITCH_ROLL_D = 8,
+  YAW_P = 9,
+  YAW_I = 10, 
+  YAW_D = 11,
+  RATE_PROFILE = 12,
+  PITCH_RATE = 13,
+  ROLL_RATE = 14,
+  PITCH_P = 15,
+  PITCH_I = 16,
+  PITCH_D = 17,
+  ROLL_P = 18,
+  ROLL_I = 19,
+  ROLL_D = 20,
+  RC_RATE_YAW = 21,
+  PITCH_ROLL_F = 22,
+  FEEDFORWARD_TRANSITION = 23,
+  HORIZON_STRENGTH = 24,
+  PID_AUDIO = 25,
+  PITCH_F = 26,
+  ROLL_F = 27,
+  YAW_F = 28,
+  OSD_PROFILE = 29,
+  LED_PROFILE = 30,
+  SLIDER_MASTER_MULTIPLIER = 31,
+};
+
+struct Adjustments { 
+  //Adjustments(uint8_t e, uint8_t rc, uint8_t sr, uint8_t er, uint8_t f): enabled(e), rangeChannel(rc), startRange(sr), endRange(er), function(f) {}
+  uint8_t enabled = 0;
+  uint8_t rangeChannel = 0;       
+  uint8_t startRange = 0;        
+  uint8_t endRange = 0;          
+  uint8_t function = 0;         
+  uint8_t adjustChannel = 0; 
+}; 
 
 // persistent data
 class ModelConfig
@@ -818,6 +885,7 @@ class ModelConfig
     OutputConfig output;
     BlackboxConfig blackbox;
     DebugConfig debug;
+    Adjustments adjustmentRanges[3];
 
     // not classified yet
     int16_t i2cSpeed = 800;

@@ -147,7 +147,10 @@ void FAST_CODE_ATTR Mixer::updateMixer(const MixerConfig& mixer, float * outputs
   }
 
   // airmode logic
-  float thrust = limitThrust(sources[MIXER_SOURCE_THRUST], (ThrottleLimitType)_model.config.output.throttleLimitType, _model.config.output.throttleLimitPercent);
+  const auto& p = _model.config.input.rates.rateProfile[_model.config.input.rates.activeRateProfile];
+  float thrust = limitThrust(sources[MIXER_SOURCE_THRUST],
+     (ThrottleLimitType)p.throttleConfig.throttleLimitType,
+      p.throttleConfig.throttleLimitPercent);
   if(_model.isAirModeActive())
   {
     float min = 0.f, max = 0.f;

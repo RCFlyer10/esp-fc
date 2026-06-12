@@ -21,7 +21,7 @@ public:
   inline float getTpaFactor() const;
   inline void resetIterm();
   float calculateSetpointRate(int axis, float input) const;
-  float calcualteAltHoldSetpoint() const;
+  float calcualteAltHoldSetpoint(float throttle) const;
 
 private:
   void beginAltHold();

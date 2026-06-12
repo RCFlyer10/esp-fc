@@ -38,6 +38,7 @@ int Actuator::update()
   updateDynLpf();
   updateRescueConfig();
   updateLed();
+  updateAdjustments();
 
   if(_model.config.debug.mode == DEBUG_PIDLOOP)
   {
@@ -290,6 +291,54 @@ void Actuator::updateLed()
   else
   {
     _model.state.led.setStatus(Connect::LED_OK);
+  }
+}
+
+void Actuator::updateAdjustments()
+{  
+  if (_model.getArmingDisabled(ARMING_DISABLED_RX_FAILSAFE)) return;
+
+  for (uint8_t i = 0; i < 3; i++)                    
+  {
+    const auto& adj = _model.config.adjustmentRanges[i];
+    
+    if (adj.function == 0) continue;      
+    
+    uint8_t auxIndex = AXIS_AUX_1 + adj.adjustChannel;
+    if (auxIndex >= AXIS_COUNT) continue;    
+
+    uint16_t channelValue = _model.state.input.us[auxIndex];    
+    
+    uint16_t rangeMin = 900 + (uint16_t)adj.startRange * 25u;
+    uint16_t rangeMax = 900 + (uint16_t)adj.endRange * 25u;    
+
+    if (channelValue < rangeMin || channelValue > rangeMax) continue;         
+    
+    switch (adj.function)
+    {
+      case RATE_PROFILE:        
+      {
+          uint8_t newProfile = 0;
+          if      (channelValue < 1300) newProfile = 0;   // Low
+          else if (channelValue < 1700) newProfile = 1;   // Middle
+          else                          newProfile = 2;   // High          
+
+          if (newProfile != _model.config.input.rates.activeRateProfile)
+          {
+              _model.config.input.rates.activeRateProfile = newProfile;              
+              _model.config.input.rates.updateAvailable = true; 
+          }
+      }
+
+      // Future expansions - just add more cases here
+      // case 13:     // PID_PROFILE
+      //     _model.changePidProfile(...);
+      //     break;
+
+      default:
+          // Unknown function - ignore
+          break;
+    }    
   }
 }
 
