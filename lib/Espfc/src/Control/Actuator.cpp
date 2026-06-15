@@ -171,6 +171,8 @@ bool Actuator::canActivateMode(FlightMode mode)
       return !_model.armingDisabled() && _model.isThrottleLow();
     case MODE_ANGLE:
       return _model.accelActive();
+    case MODE_ACRO_TRAINER:
+      return true;
     case MODE_AIRMODE:
       return _model.state.mode.airmodeAllowed;
     case MODE_ALTHOLD:

@@ -122,22 +122,39 @@ void Controller::innerLoopRobot()
 
 void FAST_CODE_ATTR Controller::outerLoop()
 {
-  // Roll/Pitch rates control
-  if (_model.isModeActive(MODE_ANGLE))
+  for (size_t i = 0; i < AXIS_COUNT_RP; i++) 
   {
-    for (size_t i = 0; i < AXIS_COUNT_RP; i++)
+    if (_model.isModeActive(MODE_ACRO_TRAINER)) // Assume this new mode is added
     {
+      float acroSetpoint = calculateSetpointRate(i, _model.state.input.ch[i]);
+      
+      float currentAngle = _model.state.attitude.euler[i];
+      float limit = Utils::toRad(_model.config.acro_trainer_angle_limit);
+      
+      if ((currentAngle > limit && acroSetpoint > 0) || 
+          (currentAngle < -limit && acroSetpoint < 0)) 
+      {
+        _model.state.setpoint.rate[i] = 0.0f; // Stop rotation at the wall
+      } 
+      else 
+      {
+        _model.state.setpoint.rate[i] = acroSetpoint; // Full Acro freedom
+      }
+    }
+    // Roll/Pitch rates control
+    else if (_model.isModeActive(MODE_ANGLE))
+    {      
       const float angleSetpoint = Utils::toRad(_model.config.level.angleLimit) * _model.state.input.ch[i];
       _model.state.setpoint.rate[i] = _model.state.outerPid[i].update(angleSetpoint, _model.state.attitude.euler[i]);
       // disable fterm in angle mode
-      _model.state.innerPid[i].fScale = 0.f;
+      _model.state.innerPid[i].fScale = 0.f;      
     }
-  }
-  else
-  {
-    for (size_t i = 0; i < AXIS_COUNT_RP; i++)
+    else
     {
-      _model.state.setpoint.rate[i] = calculateSetpointRate(i, _model.state.input.ch[i]);
+      for (size_t i = 0; i < AXIS_COUNT_RP; i++)
+      {
+        _model.state.setpoint.rate[i] = calculateSetpointRate(i, _model.state.input.ch[i]);
+      }
     }
   }
 

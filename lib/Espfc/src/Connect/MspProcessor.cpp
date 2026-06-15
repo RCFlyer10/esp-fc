@@ -275,13 +275,14 @@ void MspProcessor::processCommand(MspMessage& m, MspResponse& r, Device::SerialD
       break;
 
     case MSP_BOXNAMES:
-      r.writeString(F("ARM;AIRMODE;ANGLE;ALTHOLD;BEEPER;FAILSAFE;BLACKBOX;BLACKBOXERASE;"));
+      r.writeString(F("ARM;AIRMODE;ANGLE;ACROTRAINER;ALTHOLD;BEEPER;FAILSAFE;BLACKBOX;BLACKBOXERASE;"));
       break;
 
     case MSP_BOXIDS:
       r.writeU8(MODE_ARMED);
       r.writeU8(MODE_AIRMODE);
       r.writeU8(MODE_ANGLE);
+      r.writeU8(MODE_ACRO_TRAINER);
       r.writeU8(MODE_ALTHOLD);
       r.writeU8(MODE_BUZZER);
       r.writeU8(MODE_FAILSAFE);
