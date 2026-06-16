@@ -581,6 +581,8 @@ const Cli::Param * Cli::initialize(ModelConfig& c)
     Param(PSTR("pid_level_lpf_type"), &c.level.ptermFilter.type, filterTypeChoices),
     Param(PSTR("pid_level_lpf_freq"), &c.level.ptermFilter.freq),
 
+    Param(PSTR("pid_acro_trainer_angle_limit"), &c.acro_trainer_angle_limit),
+
     Param(PSTR("pid_althold_vel_p"), &c.pid[FC_PID_VEL].P),
     Param(PSTR("pid_althold_vel_i"), &c.pid[FC_PID_VEL].I),
     Param(PSTR("pid_althold_vel_d"), &c.pid[FC_PID_VEL].D),

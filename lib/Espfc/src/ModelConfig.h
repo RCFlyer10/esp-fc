@@ -82,6 +82,7 @@ struct FusionConfig
 enum FlightMode {
   MODE_ARMED,
   MODE_AIRMODE,
+  MODE_ACRO_TRAINER,
   MODE_ANGLE,
   MODE_ALTHOLD,
   MODE_BUZZER,
@@ -823,6 +824,7 @@ class ModelConfig
     OutputConfig output;
     BlackboxConfig blackbox;
     DebugConfig debug;
+    uint8_t acro_trainer_angle_limit = 35; // degrees
 
     // not classified yet
     int16_t i2cSpeed = 800;

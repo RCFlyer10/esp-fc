@@ -102,11 +102,14 @@ void Actuator::updateArmingDisabled()
   // Check small angle - prevent arming if tilted beyond configured angle
   if(_model.config.arming.smallAngle < 180.0f && _model.accelActive())
   {
-    const float maxTiltRad = Utils::toRad(_model.config.arming.smallAngle);
-    const float roll = _model.state.attitude.euler[AXIS_ROLL];
-    const float pitch = _model.state.attitude.euler[AXIS_PITCH];
-    const float currentTilt = std::max(std::fabs(roll), std::fabs(pitch));
-    _model.setArmingDisabled(ARMING_DISABLED_ANGLE, currentTilt > maxTiltRad);
+    if(!_model.isModeActive(MODE_ARMED))
+    {      
+      const float maxTiltRad = Utils::toRad(_model.config.arming.smallAngle);
+      const float roll = _model.state.attitude.euler[AXIS_ROLL];
+      const float pitch = _model.state.attitude.euler[AXIS_PITCH];
+      const float currentTilt = std::max(std::fabs(roll), std::fabs(pitch));
+      _model.setArmingDisabled(ARMING_DISABLED_ANGLE, currentTilt > maxTiltRad);
+    }
   }
   else
   {
@@ -171,6 +174,8 @@ bool Actuator::canActivateMode(FlightMode mode)
       return !_model.armingDisabled() && _model.isThrottleLow();
     case MODE_ANGLE:
       return _model.accelActive();
+    case MODE_ACRO_TRAINER:
+      return true;
     case MODE_AIRMODE:
       return _model.state.mode.airmodeAllowed;
     case MODE_ALTHOLD:
@@ -287,7 +292,8 @@ void Actuator::updateLed()
   if(_model.isModeActive(MODE_ARMED) || _model.state.mode.isLongClickActive())
   {
     if(_model.state.mode.isLongClickActive()) _model.setGpsHome();    
-    desiredStatus1 = _model.isModeActive(MODE_ANGLE) ? Connect::LED_ON : Connect::LED_HEARTBEAT;
+    desiredStatus1 = _model.isModeActive(MODE_ANGLE) ? Connect::LED_ON : _model.isModeActive(MODE_ACRO_TRAINER) ?  
+      Connect::LED_WARNING : Connect::LED_HEARTBEAT;
   }
   else
   {    
