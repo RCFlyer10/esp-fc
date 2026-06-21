@@ -4,16 +4,15 @@ services:
     build:
       context: docker
     hostname: espfc
-    network_mode: "host"
-    user: "1000:1000"
-    #devices:
-    #  - "/dev/ttyUSB0:/dev/ttyUSB0"
-    #  - "/dev/ttyACM0:/dev/ttyACM0"
+    stdin_open: true
+    tty: true
     group_add:
       - dialout
     volumes:
       - ./:/app
       - platformio:/home/ubuntu/.platformio
+    # Note: COM port device mapping not supported on Docker Desktop for Windows
+    # Use network upload (OTA) or upload from Windows directly instead
 
 volumes:
   platformio:
