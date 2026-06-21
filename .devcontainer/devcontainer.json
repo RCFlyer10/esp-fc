@@ -1,0 +1,22 @@
+{
+  "name": "Espfc Environment",
+  "dockerComposeFile": ["../docker-compose.yml"],
+  "service": "espfc",
+  "workspaceFolder": "/app",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "platformio-ide.customPATH": "/usr/bin:/usr/local/bin",
+        "python.defaultInterpreterPath": "/usr/bin/python3",
+        "editor.formatOnSave": true
+      },
+      "extensions": [
+        "platformio.platformio-ide",
+        "ms-vscode.cpptools",
+        "llvm-vs-code-extensions.vscode-clangd"
+      ]
+    }
+  },
+  "remoteUser": "ubuntu",
+  "postCreateCommand": "pio pkg update"
+}
