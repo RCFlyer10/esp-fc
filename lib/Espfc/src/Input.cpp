@@ -358,6 +358,11 @@ Device::InputDevice * Input::getInputDevice()
         _crsf.begin(serial, _model.isFeatureActive(FEATURE_TELEMETRY) ? &_telemetry : nullptr);
         _model.logger.info().logln(F("RX CRSF"));
         return &_crsf;
+
+      case SERIALRX_SRXL2: 
+        _srxl2.begin(serial, _model, _model.isFeatureActive(FEATURE_TELEMETRY));
+        _model.logger.info().logln(F("RX SRXL2"));
+        return &_srxl2;
     }
   }
   else if(_model.isFeatureActive(FEATURE_RX_PPM) && _model.config.pin[PIN_INPUT_RX] != -1)

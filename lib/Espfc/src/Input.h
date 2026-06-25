@@ -7,6 +7,7 @@
 #include "Device/InputIBUS.hpp"
 #include "Device/InputSBUS.h"
 #include "Device/InputCRSF.h"
+#include "Device/InputSRXL2.h"
 #include "TelemetryManager.h"
 #if defined(ESPFC_ESPNOW)
 #include "Device/InputEspNow.h"
@@ -65,6 +66,7 @@ class Input
     Device::InputIBUS _ibus;
     Device::InputSBUS _sbus;
     Device::InputCRSF _crsf;
+    Device::InputSRXL2 _srxl2;
 #if defined(ESPFC_ESPNOW)
     Device::InputEspNow _espnow;
 #endif
