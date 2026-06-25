@@ -4,7 +4,7 @@
 
 namespace Espfc {
 
-Wireless::Wireless(Model& model): _model(model), _status(STOPPED), _server(1111), _adapter(_client) {}
+Wireless::Wireless(Model& model): _model(model), _status(STOPPED), _server(1111), _adapter(_client, -1) {}
 
 int Wireless::begin()
 {

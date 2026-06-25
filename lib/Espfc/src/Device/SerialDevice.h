@@ -76,6 +76,7 @@ enum SerialRXProvider {
   SERIALRX_SRXL = 10,
   SERIALRX_TARGET_CUSTOM = 11,
   SERIALRX_FPORT = 12,
+  SERIALRX_SRXL2 = 13,
 };
 
 enum SerialDeviceConfigParity {
@@ -95,11 +96,12 @@ class SerialDeviceConfig
 {
   public:
     SerialDeviceConfig():
-      baud(SERIAL_SPEED_115200), rx_pin(-1), tx_pin(-1), inverted(false), data_bits(8), parity(SDC_SERIAL_PARITY_NONE), stop_bits(SDC_SERIAL_STOP_BITS_1)  {}
+      baud(SERIAL_SPEED_115200), rx_pin(-1), tx_pin(-1), inverted(false), halfDuplex(false), data_bits(8), parity(SDC_SERIAL_PARITY_NONE), stop_bits(SDC_SERIAL_STOP_BITS_1)  {}
     uint32_t baud;
     int8_t rx_pin;
     int8_t tx_pin;
     bool inverted;
+    bool halfDuplex;
     int8_t data_bits;
     int8_t parity;
     int8_t stop_bits;

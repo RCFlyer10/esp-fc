@@ -5,6 +5,9 @@
 #ifdef ESPFC_SERIAL_SOFT_0_WIFI
 #include <WiFiClient.h>
 #endif
+#ifdef ESP32
+#include <esp_rom_gpio.h>
+#endif
 
 namespace Espfc {
 
@@ -14,8 +17,16 @@ template<typename T>
 class SerialDeviceAdapter: public SerialDevice
 {
   public:
-    SerialDeviceAdapter(T& dev): _dev(dev) {}
-    void begin(const SerialDeviceConfig& conf) override { targetSerialInit(_dev, conf); }
+    SerialDeviceAdapter(T& dev, int uartIndex): _dev(dev), _uartIndex(uartIndex) {}
+    void begin(const SerialDeviceConfig& conf) override 
+    {
+      targetSerialInit(_dev, conf);
+
+      if (conf.halfDuplex)
+      {
+        setupHalfDuplex(conf.tx_pin, _uartIndex);
+      }
+    }
     void updateBaudRate(int baud) override { _dev.updateBaudRate(baud); };
     int available() override { return _dev.available(); }
     int read() override { return _dev.read(); }
@@ -40,7 +51,49 @@ class SerialDeviceAdapter: public SerialDevice
     bool isTxFifoEmpty() override { return _dev.availableForWrite() >= SERIAL_TX_FIFO_SIZE; }
     operator bool() const override { return (bool)_dev; }
   private:
+    void setupHalfDuplex(int8_t tx_pin, int8_t uartIndex)
+  {
+#ifndef UNIT_TEST
+    if (tx_pin < 0) return;
+
+    gpio_num_t pin = (gpio_num_t)tx_pin;
+    gpio_set_direction(pin, GPIO_MODE_INPUT_OUTPUT_OD);
+    gpio_set_level(pin, 1);
+    gpio_pullup_en(pin);
+    gpio_pulldown_dis(pin);
+
+    uint32_t tx_sig = U0TXD_OUT_IDX;
+    uint32_t rx_sig = U0RXD_IN_IDX;
+
+    switch (uartIndex)
+    {
+      case 0:
+        tx_sig = U0TXD_OUT_IDX;
+        rx_sig = U0RXD_IN_IDX;
+        break;
+      case 1:
+        tx_sig = U1TXD_OUT_IDX;
+        rx_sig = U1RXD_IN_IDX;
+        break;
+      case 2:
+#if SOC_UART_NUM > 2
+        tx_sig = U2TXD_OUT_IDX;
+        rx_sig = U2RXD_IN_IDX;
+#endif
+        break;
+      default:
+        return; // Invalid UART index → do nothing
+    }
+
+    esp_rom_gpio_connect_out_signal(pin, tx_sig, false, false);
+    esp_rom_gpio_connect_in_signal(pin, rx_sig, false);
+#else
+    // Native build - do nothing
+    (void)tx_pin;    
+#endif
+  }
     T& _dev;
+    int _uartIndex;
 };
 
 // WiFiClient specializations

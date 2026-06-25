@@ -4,19 +4,19 @@
 
 // TODO: move to target
 #ifdef ESPFC_SERIAL_0
-  static Espfc::Device::SerialDeviceAdapter<ESPFC_SERIAL_0_DEV_T> _uart0(ESPFC_SERIAL_0_DEV);
+  static Espfc::Device::SerialDeviceAdapter<ESPFC_SERIAL_0_DEV_T> _uart0(ESPFC_SERIAL_0_DEV, 0);
 #endif
 
 #ifdef ESPFC_SERIAL_1
-  static Espfc::Device::SerialDeviceAdapter<ESPFC_SERIAL_1_DEV_T> _uart1(ESPFC_SERIAL_1_DEV);
+  static Espfc::Device::SerialDeviceAdapter<ESPFC_SERIAL_1_DEV_T> _uart1(ESPFC_SERIAL_1_DEV, 1);
 #endif
 
 #ifdef ESPFC_SERIAL_2
-  static Espfc::Device::SerialDeviceAdapter<ESPFC_SERIAL_2_DEV_T> _uart2(ESPFC_SERIAL_2_DEV);
+  static Espfc::Device::SerialDeviceAdapter<ESPFC_SERIAL_2_DEV_T> _uart2(ESPFC_SERIAL_2_DEV, 2);
 #endif
 
 #ifdef ESPFC_SERIAL_USB
-  static Espfc::Device::SerialDeviceAdapter<ESPFC_SERIAL_USB_DEV_T> _usb(ESPFC_SERIAL_USB_DEV);
+  static Espfc::Device::SerialDeviceAdapter<ESPFC_SERIAL_USB_DEV_T> _usb(ESPFC_SERIAL_USB_DEV, -1);
 #endif
 
 namespace Espfc {
@@ -42,7 +42,9 @@ int SerialManager::begin()
 
     SerialDeviceConfig sdc;
     sdc.baud = spc.baud;
-
+    sdc.halfDuplex = spc.halfDuplex;
+    sdc.inverted = spc.inverted;
+	
 #ifdef ESPFC_SERIAL_USB
     const bool hasUsbPort = true;
     const bool isUsbPort = i == SERIAL_USB;
@@ -81,6 +83,10 @@ int SerialManager::begin()
           break;
         case SERIALRX_CRSF:
           sdc.baud = 420000ul;
+          break;
+        case SERIALRX_SRXL2:
+          sdc.baud = 115200ul;
+          sdc.halfDuplex = true;
           break;
         default:
           break;
@@ -224,7 +230,7 @@ Device::SerialDevice * SerialManager::getSerialPortById(SerialPort portId)
 #ifdef ESPFC_SERIAL_1
     case SERIAL_UART_1: return &_uart1;
 #endif
-#ifdef ESPFC_SERIAL_2
+#if defined(ESPFC_SERIAL_2) && (SOC_UART_NUM > 2)
     case SERIAL_UART_2: return &_uart2;
 #endif
 #ifdef ESPFC_SERIAL_USB

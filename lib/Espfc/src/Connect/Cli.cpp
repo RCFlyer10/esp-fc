@@ -357,6 +357,10 @@ const Cli::Param * Cli::initialize(ModelConfig& c)
   static const char* blackboxDevChoices[] = { PSTR("NONE"), PSTR("FLASH"), PSTR("SD_CARD"), PSTR("SERIAL"), NULL };
   static const char* blackboxModeChoices[] = { PSTR("NORMAL"), PSTR("TEST"), PSTR("ALWAYS"), NULL };
   static const char* ledTypeChoices[] = { PSTR("SIMPLE"), PSTR("STRIP"), NULL };
+  static const char* serialRxProviderChoices[] = { PSTR("SPEK1024"), PSTR("SPEK2048"), PSTR("SBUS"), PSTR("SUMD"), PSTR("SUMH"),     
+                                                    PSTR("XBUS_B"), PSTR("XBUS_RJ"), PSTR("IBUS"), PSTR("JETI"),     
+                                                    PSTR("CRSF"), PSTR("SRXL"), PSTR("CUSTOM"), PSTR("FPORT"),    
+                                                    PSTR("SRXL2"),  NULL };
 
   size_t i = 0;
   static const Param params[] = {
@@ -540,6 +544,8 @@ const Cli::Param * Cli::initialize(ModelConfig& c)
 #ifdef ESPFC_SERIAL_USB
     Param(PSTR("serial_usb"), &c.serial[SERIAL_USB]),
 #endif
+
+    Param(PSTR("serial_rx_provider"), (int8_t*)&c.input.serialRxProvider, serialRxProviderChoices),
 
     Param(PSTR("scaler_0"), &c.scaler[0]),
     Param(PSTR("scaler_1"), &c.scaler[1]),
