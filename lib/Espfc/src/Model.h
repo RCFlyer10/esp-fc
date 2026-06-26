@@ -256,12 +256,17 @@ class Model
       return -1;
     }
 
-    uint16_t getRssi() const
-    {
+    uint16_t getRssi() const {      
       size_t channel = config.input.rssiChannel;
-      if(channel < 4 || channel > state.input.channelCount) return 0;
-      float value = state.input.ch[channel - 1];
-      return Utils::clamp(lrintf(Utils::map(value, -1.0f, 1.0f, 0.0f, 1023.0f)), 0l, 1023l);
+      if (channel == 0) {          
+        int16_t rawDbm = Utils::clamp(state.input.rssi, (int16_t)-100, (int16_t)-20);
+        return (uint16_t)((rawDbm + 100) * 1024 / 80);
+      }
+      else {
+        if(channel < 4 || channel > state.input.channelCount) return 0;
+        float value = state.input.ch[channel - 1];        
+        return Utils::clamp(lrintf(Utils::map(value, -1.0f, 1.0f, 0.0f, 1023.0f)), 0l, 1023l);
+      }      
     }
 
     int load()
