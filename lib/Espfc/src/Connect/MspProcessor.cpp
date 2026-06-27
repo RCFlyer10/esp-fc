@@ -333,7 +333,7 @@ void MspProcessor::processCommand(MspMessage& m, MspResponse& r, Device::SerialD
 
     case MSP_ANALOG:
       r.writeU8(toVbatVoltageLegacy(_model.state.battery.voltage));  // voltage in 0.1V
-      r.writeU16(0); // mah drawn
+      r.writeU16(toIbatCurrent(_model.state.battery.mahUsed)); // mah drawn
       r.writeU16(_model.getRssi()); // rssi
       r.writeU16(toIbatCurrent(_model.state.battery.current));  // amperage in 0.01A
       r.writeU16(toVbatVoltage(_model.state.battery.voltage));  // voltage in 0.01V
@@ -352,7 +352,7 @@ void MspProcessor::processCommand(MspMessage& m, MspResponse& r, Device::SerialD
       r.writeU8(34);  // vbatmincellvoltage
       r.writeU8(42);  // vbatmaxcellvoltage
       r.writeU8((_model.config.vbat.cellWarning + 5) / 10);  // vbatwarningcellvoltage
-      r.writeU16(0); // batteryCapacity
+      r.writeU16(_model.config.ibat.capacity); // batteryCapacity
       r.writeU8(_model.config.vbat.source);  // voltageMeterSource
       r.writeU8(_model.config.ibat.source);  // currentMeterSource
       r.writeU16(340); // vbatmincellvoltage
@@ -364,7 +364,7 @@ void MspProcessor::processCommand(MspMessage& m, MspResponse& r, Device::SerialD
       m.readU8();  // vbatmincellvoltage
       m.readU8();  // vbatmaxcellvoltage
       _model.config.vbat.cellWarning = m.readU8() * 10;  // vbatwarningcellvoltage
-      m.readU16(); // batteryCapacity
+      _model.config.ibat.capacity = m.readU16(); // batteryCapacity
       _model.config.vbat.source = toVbatSource(m.readU8());  // voltageMeterSource
       _model.config.ibat.source = toIbatSource(m.readU8());  // currentMeterSource
       if(m.remain() >= 6)
@@ -378,11 +378,11 @@ void MspProcessor::processCommand(MspMessage& m, MspResponse& r, Device::SerialD
     case MSP_BATTERY_STATE:
       // battery characteristics
       r.writeU8(_model.state.battery.cells); // cell count, 0 indicates battery not detected.
-      r.writeU16(0); // capacity in mAh
+      r.writeU16(_model.config.ibat.capacity); // capacity in mAh
 
       // battery state
       r.writeU8(toVbatVoltageLegacy(_model.state.battery.voltage)); // in 0.1V steps
-      r.writeU16(0); // milliamp hours drawn from battery
+      r.writeU16(toIbatCurrent(_model.state.battery.mahUsed)); // milliamp hours drawn from battery
       r.writeU16(toIbatCurrent(_model.state.battery.current)); // send current in 0.01 A steps, range is -320A to 320A
 
       // battery alerts
@@ -402,7 +402,7 @@ void MspProcessor::processCommand(MspMessage& m, MspResponse& r, Device::SerialD
       for(int i = 0; i < 1; i++)
       {
         r.writeU8(i + 10);  // meter id (10-19 ibat adc)
-        r.writeU16(0); // mah drawn
+        r.writeU16(toIbatCurrent(_model.state.battery.mahUsed)); // mah drawn
         r.writeU16(constrain(toIbatCurrent(_model.state.battery.current) * 10, 0, 0xffff));  // meter value
       }
       break;

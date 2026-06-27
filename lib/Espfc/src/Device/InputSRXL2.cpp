@@ -18,6 +18,8 @@ int InputSRXL2::begin(Device::SerialDevice* serial, Model& model, bool telemetry
   _telemetryEnabled = telemetryEnabled;
   _instance = this;
   _updateCycleTime = millis();
+  _telemState = SRXL_TELEM_STATE_CELL_VOLTS;
+  
 
   while (_serial->available())
     _serial->read();
@@ -243,32 +245,93 @@ void srxlFillTelemetry(SrxlTelemetryData* pTelemData)
 
   memset(pTelemData->raw, 0, sizeof(pTelemData->raw));
 
-  pTelemData->sensorID = TELE_DEVICE_LIPOMON;
-  pTelemData->secondaryID = 0;
-
-  auto& battery = instance->getModel().state.battery;
-  float cellVoltage = battery.cellVoltage;
-  float batteryVoltage = battery.voltage;
-  int cellCount = battery.cells;
-
-  if (batteryVoltage < 2.0f || cellCount <= 0)
-    cellCount = 0;
-  else if (cellCount > 6)
-    cellCount = 6;
-
-  uint16_t cell_cv = (uint16_t)(cellVoltage * 100.0f + 0.5f);
-
-  // Faster cell filling
-  for (int i = 0; i < cellCount; ++i)
+  switch (instance->getTelemetryState())
   {
-    pTelemData->data[i * 2] = cell_cv & 0xFF;
-    pTelemData->data[i * 2 + 1] = cell_cv >> 8;
-  }
+    case Espfc::Device::SRXL_TELEM_STATE_CELL_VOLTS:
+    {
+      pTelemData->sensorID = TELE_DEVICE_LIPOMON;
+      pTelemData->secondaryID = 0;
+      
+      auto& battery = instance->getModel().state.battery;
+      int cellCount = battery.cells;
+      
+      if (battery.voltage < 2.0f || cellCount <= 0)
+      {
+        cellCount = 0;
+      }
+      else if (cellCount > 6)
+      {
+        cellCount = 6;
+      }
 
-  // Pad remaining cells + temp
-  for (int i = cellCount * 2; i < 14; ++i)
-  {
-    pTelemData->data[i] = (i & 1) ? 0x7F : 0xFF;
+      uint16_t cell_cv = (uint16_t)(battery.cellVoltage * 100.0f + 0.5f);
+
+      // Faster cell filling
+      for (int i = 0; i < cellCount; ++i)
+      {
+        pTelemData->data[i * 2] = cell_cv & 0xFF;
+        pTelemData->data[i * 2 + 1] = cell_cv >> 8;
+      }
+
+      // Pad remaining cells + temp
+      for (int i = cellCount * 2; i < 14; ++i)
+      {
+        pTelemData->data[i] = (i & 1) ? 0x7F : 0xFF;
+      }
+
+      instance->setTelemetryState(Espfc::Device::SRXL_TELEM_STATE_CURRENT);
+      break;
+    }
+
+    case Espfc::Device::SRXL_TELEM_STATE_CURRENT:
+    {
+      pTelemData->sensorID = TELE_DEVICE_FP_MAH; // 0x34
+      pTelemData->secondaryID = 0x00;
+
+      float current = instance->getModel().state.battery.current;
+      float mahUsed = instance->getModel().state.battery.mahUsed;
+      
+      // 1. Current in 0.1A steps (e.g., 100.0A -> 1000)
+      int16_t cur_a = (int16_t)(current * 10.0f);
+      
+      // 2. Capacity in 1mAh steps
+      int16_t cap_a = (int16_t)mahUsed;
+
+      // 3. Populate Data Array
+      pTelemData->data[0] = cur_a & 0xFF;         // current_A Low
+      pTelemData->data[1] = (cur_a >> 8) & 0xFF;  // current_A High
+      pTelemData->data[2] = cap_a & 0xFF;         // chargeUsed_A Low
+      pTelemData->data[3] = (cap_a >> 8) & 0xFF;  // chargeUsed_A High
+      
+      // 4. Set unpopulated sensors to 0x7FFF
+      pTelemData->data[4] = 0xFF; // temp_A Low
+      pTelemData->data[5] = 0x7F; // temp_A High (0x7FFF)
+      
+      // Zero out B-side or repeat A-side values if needed
+      memset(&pTelemData->data[6], 0, 8); 
+
+      instance->setTelemetryState(Espfc::Device::SRXL_TELEM_STATE_BATT_VOLTS);
+      break;
+    }
+
+    case Espfc::Device::SRXL_TELEM_STATE_BATT_VOLTS:
+    {
+      pTelemData->sensorID = TELE_DEVICE_VOLTAGE; // 0x01
+      pTelemData->secondaryID = 0;
+
+      float voltage = instance->getModel().state.battery.voltage;      
+      
+      uint16_t voltage_cv = (uint16_t)(voltage * 100.0f + 0.5f);
+
+      pTelemData->data[0] = (voltage_cv >> 8) & 0xFF; // High Byte
+      pTelemData->data[1] = voltage_cv & 0xFF;        // Low Byte
+
+      // IMPORTANT: For 1S, clear the rest of the buffer
+      memset(&pTelemData->data[2], 0xFF, 12);
+      
+      instance->setTelemetryState(Espfc::Device::SRXL_TELEM_STATE_CELL_VOLTS);
+      break;
+    }
   }
 }
 

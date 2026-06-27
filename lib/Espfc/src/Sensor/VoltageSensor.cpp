@@ -104,6 +104,20 @@ int VoltageSensor::readIbat()
     _model.state.debug[2] = _model.state.battery.rawCurrent;
   }
 
+  uint32_t currentTime = micros();
+  if (_lastUpdateTime != 0) 
+  {
+      float dt = (currentTime - _lastUpdateTime) / 1000.0f;
+      // Integration: mAh = (mA * hours)
+      // (Amps * 1000) = mA
+      // (dt / 3600) = fraction of an hour
+      _accumulatedMah += (_model.state.battery.current * 1000.0f) * (dt / 3600.0f);
+  }
+  _lastUpdateTime = currentTime;
+
+  // Store in the battery state for use by the Telemetry generator
+  _model.state.battery.mahUsed = _accumulatedMah;
+
   return 1;
 #else
   return 0;

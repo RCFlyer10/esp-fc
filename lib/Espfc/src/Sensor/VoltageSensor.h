@@ -28,6 +28,8 @@ class VoltageSensor: public BaseSensor
     Utils::Filter _iFilterFast;
     Utils::Filter _iFilter;
     State _state;
+    float _accumulatedMah = 0.0f;
+    uint32_t _lastUpdateTime = 0;
 };
 
 }

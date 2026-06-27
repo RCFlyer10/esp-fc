@@ -98,6 +98,7 @@ class BatteryState
     float voltage;
     float voltageUnfiltered;
     float current;
+    float mahUsed;
     float currentUnfiltered;
     float cellVoltage;
     float percentage;

@@ -567,6 +567,7 @@ struct VBatConfig
 struct IBatConfig
 {
   int8_t source = 0;
+  int16_t capacity;
   int16_t scale = 100;
   int16_t offset = 0;
 };
