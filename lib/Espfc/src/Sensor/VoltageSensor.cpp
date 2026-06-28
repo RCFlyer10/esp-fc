@@ -21,6 +21,9 @@ int VoltageSensor::begin()
 
   _state = VBAT;
 
+  _accumulatedMah = 0.0f;
+  _lastUpdateTime = 0;
+
   return 1;
 }
 
@@ -85,7 +88,7 @@ int VoltageSensor::readVbat()
 int VoltageSensor::readIbat()
 {
 #ifdef ESPFC_ADC_1
-  if (_model.config.ibat.source != 1 && _model.config.pin[PIN_INPUT_ADC_1] == -1) return 0;
+  if (_model.config.ibat.source != 1 || _model.config.pin[PIN_INPUT_ADC_1] == -1) return 0;
 
   _model.state.battery.rawCurrent = analogRead(_model.config.pin[PIN_INPUT_ADC_1]);
   float volts = _iFilterFast.update(_model.state.battery.rawCurrent * ESPFC_ADC_SCALE);
@@ -107,7 +110,7 @@ int VoltageSensor::readIbat()
   uint32_t currentTime = micros();
   if (_lastUpdateTime != 0) 
   {
-      float dt = (currentTime - _lastUpdateTime) / 1000.0f;
+      float dt = (currentTime - _lastUpdateTime) / 1000000.0f;
       // Integration: mAh = (mA * hours)
       // (Amps * 1000) = mA
       // (dt / 3600) = fraction of an hour
