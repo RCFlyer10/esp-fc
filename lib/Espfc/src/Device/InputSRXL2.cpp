@@ -289,7 +289,7 @@ void srxlFillTelemetry(SrxlTelemetryData* pTelemData)
       pTelemData->secondaryID = 0x00;
 
       float current = instance->getModel().state.battery.current;
-      float mahUsed = instance->getModel().state.battery.mahUsed;
+      float mahUsed = instance->getModel().state.battery.mahConsumed;
       
       // 1. Current in 0.1A steps (e.g., 100.0A -> 1000)
       int16_t cur_a = (int16_t)(current * 10.0f);

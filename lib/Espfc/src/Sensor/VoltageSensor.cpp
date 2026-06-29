@@ -117,9 +117,8 @@ int VoltageSensor::readIbat()
       _accumulatedMah += (_model.state.battery.current * 1000.0f) * (dt / 3600.0f);
   }
   _lastUpdateTime = currentTime;
-
-  // Store in the battery state for use by the Telemetry generator
-  _model.state.battery.mahUsed = _accumulatedMah;
+  
+  _model.state.battery.mahConsumed = _accumulatedMah;
 
   return 1;
 #else
