@@ -8,6 +8,8 @@
 // https://github.com/arduino-libraries/Arduino_LSM6DSOX/blob/master/src/LSM6DSOX.cpp
 #define LSM6DSOX_ADDRESS_FIRST     0x6A
 #define LSM6DSOX_ADDRESS_SECOND    0x6b
+#define LSM6DSO_WHOAMI             0x6C
+#define LSM6DSOX_WHOAMI            0x69
 
 // registers
 #define LSM6DSO_REG_WHO_AM_I       0x0F
@@ -29,9 +31,9 @@
 #define LSM6DSO_VAL_INT1_CTRL              0x02  // enable gyro data ready interrupt pin 1
 #define LSM6DSO_VAL_INT2_CTRL              0x02  // enable gyro data ready interrupt pin 2
 #define LSM6DSO_VAL_CTRL1_XL_ODR833        0x07  // accelerometer 833hz output data rate (gyro/8)
-#define LSM6DSO_VAL_CTRL1_XL_ODR1667       0x08  // accelerometer 1666hz output data rate (gyro/4)
+#define LSM6DSO_VAL_CTRL1_XL_ODR1666       0x08  // accelerometer 1666hz output data rate (gyro/4)
 #define LSM6DSO_VAL_CTRL1_XL_ODR3332       0x09  // accelerometer 3332hz output data rate (gyro/2)
-#define LSM6DSO_VAL_CTRL1_XL_ODR3333       0x0A  // accelerometer 6664hz output data rate (gyro/1)
+#define LSM6DSO_VAL_CTRL1_XL_ODR6664       0x0A  // accelerometer 6664hz output data rate (gyro/1)
 #define LSM6DSO_VAL_CTRL1_XL_8G            0x03  // accelerometer 8G scale
 #define LSM6DSO_VAL_CTRL1_XL_16G           0x01  // accelerometer 16G scale
 #define LSM6DSO_VAL_CTRL1_XL_LPF1          0x00  // accelerometer output from LPF1
@@ -51,6 +53,10 @@
 #define LSM6DSO_VAL_CTRL6_C_FTYPE_232HZ    0x01  // (bits 2:0) gyro LPF1 cutoff 232.0hz
 #define LSM6DSO_VAL_CTRL6_C_FTYPE_171HZ    0x02  // (bits 2:0) gyro LPF1 cutoff 171.1hz
 #define LSM6DSO_VAL_CTRL6_C_FTYPE_609HZ    0x03  // (bits 2:0) gyro LPF1 cutoff 609.0hz
+#define LSM6DSO_VAL_CTRL8_XL_COMPOSITE_EN  0x08  // Bit 3 enables composite filter path
+#define LSM6DSO_VAL_CTRL8_XL_BW_ODR_4      0x00  // Sets bandwidth to ODR/4
+#define LSM6DSO_VAL_CTRL8_XL_BW_ODR_10     0x01  // Sets bandwidth to ODR/10
+#define LSM6DSO_VAL_CTRL8_XL_BW_ODR_20     0x02  // Sets bandwidth to ODR/20
 #define LSM6DSO_VAL_CTRL9_XL_I3C_DISABLE   0x02  // (bit 1) disable I3C interface
 
 // masks
@@ -75,15 +81,32 @@ class GyroLSM6DSO: public GyroDevice
     int begin(BusDevice * bus, uint8_t addr) override
     {
       setBus(bus, addr);
+      delay(50);
 
       if(!testConnection()) return 0;
 
-      // reset device
+      // Set Accel and Gyro to Power-Down (ODR = 0) and reset
+      _bus->writeByte(_addr, LSM6DSO_REG_CTRL1_XL, 0x00);
+      _bus->writeByte(_addr, LSM6DSO_REG_CTRL2_G, 0x00);
       _bus->writeMask(_addr, LSM6DSO_REG_CTRL3_C, LSM6DSO_MASK_CTRL3_C_RESET, 1);
-      delay(100);
+      
+      delayMicroseconds(50);
 
-      // Accel, 833hz ODR, 16G scale, use LPF1 output
-      _bus->writeByte(_addr, LSM6DSO_REG_CTRL1_XL, (LSM6DSO_VAL_CTRL1_XL_ODR833 << 4) | (LSM6DSO_VAL_CTRL1_XL_16G << 2) | (LSM6DSO_VAL_CTRL1_XL_LPF1 << 1));
+      uint8_t reg = 0;
+      bool success = false;
+      for (int i = 0; i < 100; i++) {
+          _bus->readByte(_addr, LSM6DSO_REG_CTRL3_C, &reg);
+          if (!(reg & LSM6DSO_MASK_CTRL3_C_RESET)) {
+              success = true;
+              break;
+          }
+          delayMicroseconds(10);
+      }
+      
+      if (!success) return 0; // Return failure if timeout reached
+      
+      // Accel, 1666hz ODR, 8G scale, use LPF2 output
+      _bus->writeByte(_addr, LSM6DSO_REG_CTRL1_XL, (LSM6DSO_VAL_CTRL1_XL_ODR1666 << 4) | (LSM6DSO_VAL_CTRL1_XL_8G << 2) | (LSM6DSO_VAL_CTRL1_XL_LPF2 << 1));
       delay(1);
 
       // Gyro, 6664hz ODR, 2000dps scale
@@ -93,11 +116,14 @@ class GyroLSM6DSO: public GyroDevice
       // latch LSB/MSB during reads; set interrupt pins active high; set interrupt pins push/pull; set 4-wire SPI; enable auto-increment burst reads
       _bus->writeMask(_addr, LSM6DSO_REG_CTRL3_C, LSM6DSO_MASK_CTRL3_C, (LSM6DSO_VAL_CTRL3_C_BDU | LSM6DSO_VAL_CTRL3_C_H_LACTIVE | LSM6DSO_VAL_CTRL3_C_PP_OD | LSM6DSO_VAL_CTRL3_C_SIM | LSM6DSO_VAL_CTRL3_C_IF_INC));
 
-      // enable accelerometer high performane mode; set gyro LPF1 cutoff to 335.5hz
-      _bus->writeMask(_addr, LSM6DSO_REG_CTRL4_C, LSM6DSO_MASK_CTRL4_C, (LSM6DSO_VAL_CTRL4_C_LPF1_SEL_G));
+      // Disable I2C interface and route gyro output through LPF1
+      _bus->writeMask(_addr, LSM6DSO_REG_CTRL4_C, LSM6DSO_MASK_CTRL4_C, LSM6DSO_VAL_CTRL4_C_I2C_DISABLE | LSM6DSO_VAL_CTRL4_C_LPF1_SEL_G);
 
-      // enable gyro LPF1
+      // Enable accelerometer high-performance mode and set gyro LPF1 cutoff to 335 Hz
       _bus->writeMask(_addr, LSM6DSO_REG_CTRL6_C, LSM6DSO_MASK_CTRL6_C, (LSM6DSO_VAL_CTRL6_C_XL_HM_MODE | LSM6DSO_VAL_CTRL6_C_FTYPE_335HZ));
+
+      // Enable accelerometer composite filter (LPF1 + LPF2)
+      _bus->writeByte(_addr, LSM6DSO_REG_CTRL8_XL, LSM6DSO_VAL_CTRL8_XL_COMPOSITE_EN | LSM6DSO_VAL_CTRL8_XL_BW_ODR_20);
 
       // disable I3C interface
       _bus->writeMask(_addr, LSM6DSO_REG_CTRL9_XL, LSM6DSO_MASK_CTRL9_XL, LSM6DSO_VAL_CTRL9_XL_I3C_DISABLE);
@@ -113,7 +139,7 @@ class GyroLSM6DSO: public GyroDevice
     int FAST_CODE_ATTR readGyro(VectorInt16& v) override
     {
       int16_t buffer[3];
-
+      
       _bus->readFast(_addr, LSM6DSO_REG_OUTX_L_G, 6, (uint8_t*)buffer);
 
       v.x = buffer[0];
@@ -126,7 +152,6 @@ class GyroLSM6DSO: public GyroDevice
     int readAccel(VectorInt16& v) override
     {
       int16_t buffer[3];
-
       _bus->readFast(_addr, LSM6DSO_REG_OUTX_L_XL, 6, (uint8_t*)buffer);
 
       v.x = buffer[0];
@@ -138,7 +163,25 @@ class GyroLSM6DSO: public GyroDevice
 
     void setDLPFMode(uint8_t mode) override
     {
-    }
+      uint8_t ftype;
+
+      // Map requested enum to the closest hardware supported frequency
+      switch (mode)
+      {
+        case GYRO_DLPF_256: // Closest to 609Hz
+        case GYRO_DLPF_188:
+        case GYRO_DLPF_98:  ftype = LSM6DSO_VAL_CTRL6_C_FTYPE_609HZ; break;
+        case GYRO_DLPF_42:  ftype = LSM6DSO_VAL_CTRL6_C_FTYPE_335HZ; break;
+        case GYRO_DLPF_20:  ftype = LSM6DSO_VAL_CTRL6_C_FTYPE_232HZ; break;
+        case GYRO_DLPF_10:
+        case GYRO_DLPF_5:
+        case GYRO_DLPF_EX:  ftype = LSM6DSO_VAL_CTRL6_C_FTYPE_171HZ; break; // Lowest available
+        default:            ftype = LSM6DSO_VAL_CTRL6_C_FTYPE_335HZ; break; // Safe default
+      }
+
+      // Update CTRL6_C bits 2:0 while preserving bit 4 (XL High Performance mode)
+      _bus->writeMask(_addr, LSM6DSO_REG_CTRL6_C, LSM6DSO_MASK_CTRL6_C, (LSM6DSO_VAL_CTRL6_C_XL_HM_MODE | ftype));
+    }  
 
     int getRate() const override
     {
@@ -154,7 +197,7 @@ class GyroLSM6DSO: public GyroDevice
       uint8_t whoami = 0;
       _bus->readByte(_addr, LSM6DSO_REG_WHO_AM_I, &whoami);
       //D("lsm6dso:whoami", _addr, whoami);
-      return whoami == 0x6C || whoami == 0x69;
+      return (whoami == LSM6DSO_WHOAMI || whoami == LSM6DSOX_WHOAMI);
     }
 };
 

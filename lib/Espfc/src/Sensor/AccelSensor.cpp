@@ -18,7 +18,17 @@ int AccelSensor::begin()
     return 0;
   }
 
-  _model.state.accel.scale = 16.f * ACCEL_G / 32768.f;
+  if (_gyro->getType() == GYRO_LSM6DSO)
+  {
+    // LSM6DSO hardware constant: 8G scale: 0.244 mg/LSB
+    // Convert milli-G directly to meters-per-second squared (ACCEL_G)
+    _model.state.accel.scale = (0.244f / 1000.0f) * ACCEL_G;
+  }
+  else
+  {
+    // Default legacy fallback for MPU-6050 and other traditional sensors
+    _model.state.accel.scale = 16.f * ACCEL_G / 32768.f;
+  }
 
   for (size_t i = 0; i < AXIS_COUNT_RPY; i++)
   {

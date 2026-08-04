@@ -27,8 +27,18 @@ int GyroSensor::begin()
 
   _gyro->setDLPFMode(_model.config.gyro.dlpf);
   _gyro->setRate(_gyro->getRate());
-  _model.state.gyro.scale = Utils::toRad(2000.f) / 32768.f;
-
+  if (_gyro->getType() == GYRO_LSM6DSO)
+  {
+    // STMicroelectronics constant: 70 mdps/LSB = 0.070 dps/LSB
+    // Cleanly convert degrees/sec to radians/sec using the built-in utility
+    _model.state.gyro.scale = Utils::toRad(0.070f);
+  }
+  else
+  {
+    // Default fallback for old MPU-6050 and other standard sensors
+    _model.state.gyro.scale = Utils::toRad(2000.f) / 32768.f;
+  }
+    
   _model.state.gyro.calibrationState = CALIBRATION_START; // calibrate gyro on start
   _model.state.gyro.calibrationRate = _model.state.loopTimer.rate;
   _model.state.gyro.biasAlpha = 5.0f / _model.state.gyro.calibrationRate;
