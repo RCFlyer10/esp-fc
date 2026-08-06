@@ -166,6 +166,13 @@
 // DEPRECATED - #define MSP_SET_BF_CONFIG               67 //in message baseflight-specific settings save
 
 #define MSP_REBOOT                      68 //in message reboot settings
+// Payload values for MSP_REBOOT.
+// MSP_REBOOT_FIRMWARE: reboot to the normal firmware image.
+// MSP_REBOOT_MSC: reboot into the MSC-only application partition.
+// MSP_REBOOT_MSC_UTC: reboot into the MSC-only application partition and preserve UTC time if available.
+#define MSP_REBOOT_FIRMWARE             0
+#define MSP_REBOOT_MSC                  1
+#define MSP_REBOOT_MSC_UTC              2
 
 // Use MSP_BUILD_INFO instead
 // DEPRECATED - #define MSP_BF_BUILD_INFO               69 //out message build date as well as some space for future expansion

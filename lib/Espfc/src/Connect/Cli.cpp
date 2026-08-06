@@ -6,8 +6,33 @@
 #include "Hal/Pgm.h"
 #include "msp/msp_protocol.h"
 
+#if defined(ESP32)
+#include <esp_ota_ops.h>
+#endif
+
 #ifdef USE_FLASHFS
 #include "Device/FlashDevice.h"
+#endif
+
+#if defined(ESP32)
+static bool setMscBootPartition(Stream& s)
+{
+  const esp_partition_t* partition = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_1, nullptr);
+  if(!partition)
+  {
+    s.println(F("ota1 partition not found"));
+    return false;
+  }
+
+  esp_err_t err = esp_ota_set_boot_partition(partition);
+  if(err != ESP_OK)
+  {
+    s.print(F("esp_ota_set_boot_partition failed: "));
+    s.println(err);
+    return false;
+  }
+  return true;
+}
 #endif
 
 #if defined(ESPFC_WIFI_ALT)
@@ -369,7 +394,6 @@ const Cli::Param * Cli::initialize(ModelConfig& c)
     Param(PSTR("feature_rx_spi"), &c.featureMask, 25),
     Param(PSTR("feature_soft_serial"), &c.featureMask, 6),
     Param(PSTR("feature_telemetry"), &c.featureMask, 10),
-
 
     Param(PSTR("debug_mode"), &c.debug.mode, debugModeChoices),
     Param(PSTR("debug_axis"), &c.debug.axis),
@@ -891,6 +915,7 @@ void Cli::execute(CliCmd& cmd, Stream& s)
       PSTR(" help"), PSTR(" dump"), PSTR(" get param"), PSTR(" set param value ..."), PSTR(" cal [gyro]"),
       PSTR(" defaults"), PSTR(" save"), PSTR(" reboot"), PSTR(" scaler"), PSTR(" mixer"),
       PSTR(" stats"), PSTR(" status"), PSTR(" devinfo"), PSTR(" version"), PSTR(" logs"), PSTR(" gps [set_home|clear_home]"),
+      PSTR(" msc"),
       //PSTR(" load"), PSTR(" eeprom"),
       //PSTR(" fsinfo"), PSTR(" fsformat"), PSTR(" log"),
       nullptr
@@ -1350,6 +1375,22 @@ void Cli::execute(CliCmd& cmd, Stream& s)
     s.print(_model.state.stats.getCpuLoad(), 1);
     s.print(F("%"));
     s.println();
+  }
+  else if(strcmp_P(cmd.args[0], PSTR("msc")) == 0)
+  {
+#if defined(ESP32)
+    if(setMscBootPartition(s))
+    {
+      s.println(F("booting app1 MSC"));
+      Hardware::restart(_model);
+    }
+    else
+    {
+      s.println(F("failed to set app1"));
+    }
+#else
+    s.println(F("MSC boot not supported on this platform"));
+#endif
   }
   else if(strcmp_P(cmd.args[0], PSTR("reboot")) == 0 || strcmp_P(cmd.args[0], PSTR("exit")) == 0)
   {

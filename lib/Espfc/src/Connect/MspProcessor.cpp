@@ -3,11 +3,30 @@
 #include <platform.h>
 #include <algorithm>
 #include <limits>
+#include "Usb/UsbMsc.h"
+#if defined(ESP32)
+#include <esp_ota_ops.h>
+#endif
 #if defined(ESPFC_MULTI_CORE) && defined(ESPFC_FREE_RTOS)
 #include <driver/timer.h>
 #endif
 
 #define VTXCOMMON_MSP_BANDCHAN_CHKVAL ((uint16_t)((7 << 3) + 7))
+
+namespace {
+
+[[maybe_unused]] bool requestMscBoot()
+{
+#if defined(ESP32)
+  const esp_partition_t* partition = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_1, nullptr);
+  if(!partition) return false;
+  return esp_ota_set_boot_partition(partition) == ESP_OK;
+#else
+  return false;
+#endif
+}
+
+}
 
 extern "C" {
   #include "msp/msp_protocol.h"
@@ -820,7 +839,7 @@ void MspProcessor::processCommand(MspMessage& m, MspResponse& r, Device::SerialD
       r.writeU8(_model.config.input.filterDerivative.freq); // rc_smoothing_derivative_cutoff
       r.writeU8(0);//_model.config.input.filter.type); // rc_smoothing_input_type
       r.writeU8(fromFilterTypeDerivative(_model.config.input.filterDerivative.type)); // rc_smoothing_derivative_type
-      r.writeU8(0); // usb type
+      r.writeU8(Espfc::usbMscAvailable ? 2 : 0); // usb type (2 = MSC)
       // 1.42+
       r.writeU8(_model.config.input.filterAutoFactor); // rc_smoothing_auto_factor
       break;
@@ -857,7 +876,7 @@ void MspProcessor::processCommand(MspMessage& m, MspResponse& r, Device::SerialD
         _model.config.input.filterDerivative.type = toFilterTypeDerivative(m.readU8()); // rc_smoothing_derivative_type
       }
       if (m.remain() >= 1) {
-        m.readU8(); // usb type
+        m.readU8(); // legacy USB type payload ignored
       }
       // 1.42+
       if (m.remain() >= 1) {
@@ -1577,7 +1596,30 @@ void MspProcessor::processCommand(MspMessage& m, MspResponse& r, Device::SerialD
       break;
 
     case MSP_REBOOT:
-      r.writeU8(0); // reboot to firmware
+      {
+        uint8_t rebootMode = MSP_REBOOT_FIRMWARE;
+        if(m.remain() >= 1)
+        {
+          rebootMode = m.readU8();
+        }
+
+        if(rebootMode == MSP_REBOOT_MSC || rebootMode == MSP_REBOOT_MSC_UTC)
+        {
+          if(_model.isModeActive(MODE_ARMED))
+          {
+            r.result = -1; // reject: refuse to enter MSC while armed
+            break;
+          }
+
+          if(!requestMscBoot())
+          {
+            r.result = -1; // fail if we cannot set the MSC partition
+            break;
+          }
+        }
+
+        r.writeU8(rebootMode); // echo mode back — same as stock MSP_REBOOT reply
+      }
       _postCommand = std::bind(&MspProcessor::processRestart, this);
       break;
 
