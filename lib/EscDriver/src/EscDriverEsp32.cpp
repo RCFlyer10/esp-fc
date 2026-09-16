@@ -92,7 +92,7 @@ int EscDriverEsp32::begin(const EscConfig& conf)
 {
   _protocol = ESC_PROTOCOL_SANITIZE(conf.protocol);
   _async = _protocol == ESC_PROTOCOL_BRUSHED ? true : conf.async; // force async for brushed
-  _rate = constrain(conf.rate, 50, 8000);
+  _rate = constrain(conf.rate, 50, 32000); // RMT tick resolution allows brushed rates well above 8kHz
   _interval = TO_INTERVAL_US(_rate);
   _digital = isDigital(_protocol);
   _dshot_tlm = conf.dshotTelemetry && (_protocol == ESC_PROTOCOL_DSHOT300 || _protocol == ESC_PROTOCOL_DSHOT600);

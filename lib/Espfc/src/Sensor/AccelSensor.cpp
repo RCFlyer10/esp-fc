@@ -34,6 +34,7 @@ int AccelSensor::begin()
   {
     _filter[i].begin(FilterConfig(FILTER_FIR2, 1), _model.state.accel.timer.rate);
     _model.state.accel.filter[i].begin(_model.config.accel.filter, _model.state.accel.timer.rate);
+    _model.state.accel.notchFilter[i].begin(_model.config.accel.notchFilter, _model.state.accel.timer.rate);
   }
 
   _model.state.accel.biasAlpha = 5.0f / _model.state.accel.timer.rate;
@@ -90,6 +91,7 @@ int FAST_CODE_ATTR AccelSensor::filter()
       _model.state.debug[i] = _model.state.accel.raw[i];
     }
     _model.state.accel.adc.set(i, _filter[i].update(_model.state.accel.adc[i]));
+    _model.state.accel.adc.set(i, _model.state.accel.notchFilter[i].update(_model.state.accel.adc[i]));
     _model.state.accel.adc.set(i, _model.state.accel.filter[i].update(_model.state.accel.adc[i]));
   }
 

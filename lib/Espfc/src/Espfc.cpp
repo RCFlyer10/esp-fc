@@ -19,7 +19,13 @@ int Espfc::load()
 
 int Espfc::begin()
 {
-  _model.state.led.begin(_model.config.pin[PIN_LED_BLINK], _model.config.led.type, _model.config.led.invert);
+  _model.state.led_0.begin(_model.config.pin[PIN_LED_0], 
+    _model.config.led.type_0, 
+    _model.config.led.invert_0);
+
+  _model.state.led_1.begin(_model.config.pin[PIN_LED_1], 
+    _model.config.led.type_1, 
+    _model.config.led.invert_1);
 
   _serial.begin();      // requires _model.load()
   //_model.logStorageResult();
@@ -34,6 +40,7 @@ int Espfc::begin()
   _buzzer.begin();
 
   _model.state.buzzer.push(BUZZER_SYSTEM_INIT);
+  //_model.state.led_0.setStatus(Connect::LED_INIT);
 
   return 1;
 }
@@ -88,7 +95,8 @@ int FAST_CODE_ATTR Espfc::update(bool externalTrigger)
 
   _serial.update();
   _buzzer.update();
-  _model.state.led.update();
+  _model.state.led_0.update();
+  _model.state.led_1.update();
   _model.state.stats.update();
 
   return 1;
@@ -109,18 +117,24 @@ int FAST_CODE_ATTR Espfc::updateOther()
   switch(e.type)
   {
     case EVENT_GYRO_READ:
+    {
       _sensor.preLoop();
       _controller.update();
-      // skip mixer and bb if earlier than half cycle, possible delay in previous iteration, 
-      // to keep space to receive dshot erpm frame, but process rest
-      if(_loop_next < micros())
+      const uint32_t now = micros();
+      const bool dshotTelemetryActive =
+        _model.config.output.dshotTelemetry && _model.state.mixer.digitalOutput;
+
+      // Brushed output has no DShot telemetry frame to protect. Keep the
+      // spacing guard only for digital output with telemetry enabled.
+      if(!dshotTelemetryActive || static_cast<int32_t>(now - _loop_next) >= 0)
       {
-        _loop_next = micros() + _model.state.loopTimer.interval / 2;
+        _loop_next = now + _model.state.loopTimer.interval / 2;
         _mixer.update();
         _blackbox.update();
-      }
+      }      
       _sensor.postLoop();
       break;
+    }
     case EVENT_ACCEL_READ:
       _sensor.fusion();
       break;

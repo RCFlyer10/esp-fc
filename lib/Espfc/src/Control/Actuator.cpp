@@ -38,6 +38,7 @@ int Actuator::update()
   updateDynLpf();
   updateRescueConfig();
   updateLed();
+  updateAdjustments();
 
   if(_model.config.debug.mode == DEBUG_PIDLOOP)
   {
@@ -94,7 +95,7 @@ void Actuator::updateArmingDisabled()
   _model.setArmingDisabled(ARMING_DISABLED_NO_GYRO,        !_model.state.gyro.present || errors);
   _model.setArmingDisabled(ARMING_DISABLED_FAILSAFE,        _model.state.failsafe.phase != FC_FAILSAFE_IDLE);
   _model.setArmingDisabled(ARMING_DISABLED_RX_FAILSAFE,     _model.state.input.rxLoss || _model.state.input.rxFailSafe);
-  _model.setArmingDisabled(ARMING_DISABLED_THROTTLE,       !_model.isThrottleLow());
+  _model.setArmingDisabled(ARMING_DISABLED_THROTTLE,       !_model.isModeActive(MODE_ARMED) && !_model.isThrottleLow());
   _model.setArmingDisabled(ARMING_DISABLED_CALIBRATING,     _model.calibrationActive());
   _model.setArmingDisabled(ARMING_DISABLED_MOTOR_PROTOCOL,  _model.config.output.protocol == ESC_PROTOCOL_DISABLED);
   _model.setArmingDisabled(ARMING_DISABLED_REBOOT_REQUIRED, _model.state.mode.rescueConfigMode == RESCUE_CONFIG_ACTIVE);
@@ -102,11 +103,14 @@ void Actuator::updateArmingDisabled()
   // Check small angle - prevent arming if tilted beyond configured angle
   if(_model.config.arming.smallAngle < 180.0f && _model.accelActive())
   {
-    const float maxTiltRad = Utils::toRad(_model.config.arming.smallAngle);
-    const float roll = _model.state.attitude.euler[AXIS_ROLL];
-    const float pitch = _model.state.attitude.euler[AXIS_PITCH];
-    const float currentTilt = std::max(std::fabs(roll), std::fabs(pitch));
-    _model.setArmingDisabled(ARMING_DISABLED_ANGLE, currentTilt > maxTiltRad);
+    if(!_model.isModeActive(MODE_ARMED))
+    {      
+      const float maxTiltRad = Utils::toRad(_model.config.arming.smallAngle);
+      const float roll = _model.state.attitude.euler[AXIS_ROLL];
+      const float pitch = _model.state.attitude.euler[AXIS_PITCH];
+      const float currentTilt = std::max(std::fabs(roll), std::fabs(pitch));
+      _model.setArmingDisabled(ARMING_DISABLED_ANGLE, currentTilt > maxTiltRad);
+    }
   }
   else
   {
@@ -171,6 +175,8 @@ bool Actuator::canActivateMode(FlightMode mode)
       return !_model.armingDisabled() && _model.isThrottleLow();
     case MODE_ANGLE:
       return _model.accelActive();
+    case MODE_ACRO_TRAINER:
+      return true;
     case MODE_AIRMODE:
       return _model.state.mode.airmodeAllowed;
     case MODE_ALTHOLD:
@@ -217,7 +223,11 @@ void Actuator::updateBuzzer()
   {
     _model.state.buzzer.play(BUZZER_RX_LOST);
   }
-  if(_model.state.battery.warn(_model.config.vbat.cellWarning))
+  if(_model.state.battery.warn(_model.config.vbat.cellMin))
+  {
+    _model.state.buzzer.play(BUZZER_BAT_CRIT_LOW);
+  }
+  else if(_model.state.battery.warn(_model.config.vbat.cellWarning))
   {
     _model.state.buzzer.play(BUZZER_BAT_LOW);
   }
@@ -238,16 +248,18 @@ void Actuator::updateBuzzer()
 
 void Actuator::updateDynLpf()
 {
-  return; // temporary disable
   int scale = Utils::clamp((int)_model.state.input.us[AXIS_THRUST], 1000, 2000);
-  if(_model.config.gyro.dynLpfFilter.cutoff > 0) {
-    int gyroFreq = Utils::map(scale, 1000, 2000, _model.config.gyro.dynLpfFilter.cutoff, _model.config.gyro.dynLpfFilter.freq);
+
+  // throttle-noise (e.g. brushed motors) increases with throttle, so filter tighter (freq/max at idle -> cutoff/min at full throttle)
+  if(_model.config.gyro.dynLpfFilter.cutoff > 0 && _model.config.gyro.dynLpfFilter.freq > _model.config.gyro.dynLpfFilter.cutoff) {
+    int gyroFreq = Utils::map(scale, 1000, 2000, _model.config.gyro.dynLpfFilter.freq, _model.config.gyro.dynLpfFilter.cutoff);
     for(size_t i = 0; i < AXIS_COUNT_RPY; i++) {
       _model.state.gyro.filter[i].reconfigure(gyroFreq);
     }
   }
-  if(_model.config.dterm.dynLpfFilter.cutoff > 0) {
-    int dtermFreq = Utils::map(scale, 1000, 2000, _model.config.dterm.dynLpfFilter.cutoff, _model.config.dterm.dynLpfFilter.freq);
+
+  if(_model.config.dterm.dynLpfFilter.cutoff > 0 && _model.config.dterm.dynLpfFilter.freq > _model.config.dterm.dynLpfFilter.cutoff) {
+    int dtermFreq = Utils::map(scale, 1000, 2000, _model.config.dterm.dynLpfFilter.freq, _model.config.dterm.dynLpfFilter.cutoff);
     for(size_t i = 0; i < AXIS_COUNT_RPY; i++) {
       _model.state.innerPid[i].dtermFilter.reconfigure(dtermFreq);
     }
@@ -259,8 +271,9 @@ void Actuator::updateRescueConfig()
   switch(_model.state.mode.rescueConfigMode)
   {
     case RESCUE_CONFIG_PENDING:
-      // if some rc frames are received, disable to prevent activate later
-      if(_model.state.input.frameCount > 100)
+      // Disable only when a healthy RX link is present.
+      // Some receivers keep sending failsafe frames with TX off.
+      if(_model.state.input.frameCount > 100 && _model.state.failsafe.phase == FC_FAILSAFE_IDLE)
       {
         _model.state.mode.rescueConfigMode = RESCUE_CONFIG_DISABLED;
       }
@@ -277,19 +290,73 @@ void Actuator::updateRescueConfig()
 }
 
 void Actuator::updateLed()
-{
+{   
+  Connect::LedStatus desiredStatus0 = _model.armingDisabled() ? Connect::LED_ERROR : Connect::LED_ON;
+  if (_model.state.led_0.getStatus() != desiredStatus0) {
+    _model.state.led_0.setStatus(desiredStatus0);
+  }
+
+  Connect::LedStatus desiredStatus1;  
   if(_model.isModeActive(MODE_ARMED) || _model.state.mode.isLongClickActive())
   {
-    if(_model.state.mode.isLongClickActive()) _model.setGpsHome();
-    _model.state.led.setStatus(Connect::LED_ON);
-  }
-  else if(_model.armingDisabled())
-  {
-    _model.state.led.setStatus(Connect::LED_ERROR);
+    if(_model.state.mode.isLongClickActive()) _model.setGpsHome();    
+    desiredStatus1 = _model.isModeActive(MODE_ANGLE) ? Connect::LED_ON : _model.isModeActive(MODE_ACRO_TRAINER) ?  
+      Connect::LED_WARNING : Connect::LED_HEARTBEAT;
   }
   else
+  {    
+    desiredStatus1 = Connect::LED_OFF;
+  }
+  if (_model.state.led_1.getStatus() != desiredStatus1) {
+    _model.state.led_1.setStatus(desiredStatus1);
+  }
+}
+
+void Actuator::updateAdjustments()
+{  
+  if (_model.getArmingDisabled(ARMING_DISABLED_RX_FAILSAFE)) return;
+
+  for (uint8_t i = 0; i < 3; i++)                    
   {
-    _model.state.led.setStatus(Connect::LED_OK);
+    const auto& adj = _model.config.adjustmentRanges[i];
+    
+    if (adj.function == 0) continue;      
+    
+    uint8_t auxIndex = AXIS_AUX_1 + adj.adjustChannel;
+    if (auxIndex >= AXIS_COUNT) continue;    
+
+    uint16_t channelValue = _model.state.input.us[auxIndex];    
+    
+    uint16_t rangeMin = 900 + (uint16_t)adj.startRange * 25u;
+    uint16_t rangeMax = 900 + (uint16_t)adj.endRange * 25u;    
+
+    if (channelValue < rangeMin || channelValue > rangeMax) continue;         
+    
+    switch (adj.function)
+    {
+      case RATE_PROFILE:        
+      {
+          uint8_t newProfile = 0;
+          if      (channelValue < 1300) newProfile = 0;   // Low
+          else if (channelValue < 1700) newProfile = 1;   // Middle
+          else                          newProfile = 2;   // High          
+
+          if (newProfile != _model.config.input.rates.activeRateProfile)
+          {
+              _model.config.input.rates.activeRateProfile = newProfile;              
+              _model.config.input.rates.updateAvailable = true; 
+          }
+      }
+
+      // Future expansions - just add more cases here
+      // case 13:     // PID_PROFILE
+      //     _model.changePidProfile(...);
+      //     break;
+
+      default:
+          // Unknown function - ignore
+          break;
+    }    
   }
 }
 

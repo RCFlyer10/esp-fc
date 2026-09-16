@@ -98,6 +98,7 @@ class BatteryState
     float voltage;
     float voltageUnfiltered;
     float current;
+    float mahConsumed;
     float currentUnfiltered;
     float cellVoltage;
     float percentage;
@@ -174,6 +175,8 @@ struct InputState
   bool rxLoss;
   bool rxFailSafe;
 
+  int16_t rssi = 0;                // RSSI in dBm
+  uint8_t linkQuality = 0;         // LQ in percent (0-100)
   uint32_t frameTime;
   uint32_t frameDelta;
   uint32_t frameRate;
@@ -289,6 +292,7 @@ struct AccelState
   VectorFloat adc;
   VectorFloat prev;
   Utils::Filter filter[AXIS_COUNT_RPY];
+  Utils::Filter notchFilter[AXIS_COUNT_RPY];
   Utils::Timer timer;
 
   VectorFloat world;
@@ -509,7 +513,8 @@ struct ModelState
   int16_t debug[DEBUG_VALUE_COUNT];
 
   BuzzerState buzzer;
-  Connect::StatusLed led;
+  Connect::StatusLed led_0;
+  Connect::StatusLed led_1;
 
   BatteryState battery;
 

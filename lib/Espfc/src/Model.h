@@ -141,6 +141,7 @@ class Model
       {
         //save();
         state.buzzer.push(BUZZER_GYRO_CALIBRATED);
+        //state.led_0.setStatus(Connect::LED_GYRO);        
         logger.info().log(F("GYRO BIAS")).log(Utils::toDeg(state.gyro.bias.x)).log(Utils::toDeg(state.gyro.bias.y)).logln(Utils::toDeg(state.gyro.bias.z));
       }
       if(state.accel.calibrationState == CALIBRATION_SAVE)
@@ -256,12 +257,17 @@ class Model
       return -1;
     }
 
-    uint16_t getRssi() const
-    {
+    uint16_t getRssi() const {      
       size_t channel = config.input.rssiChannel;
-      if(channel < 4 || channel > state.input.channelCount) return 0;
-      float value = state.input.ch[channel - 1];
-      return Utils::clamp(lrintf(Utils::map(value, -1.0f, 1.0f, 0.0f, 1023.0f)), 0l, 1023l);
+      if (channel == 0) {          
+        int16_t rawDbm = Utils::clamp(state.input.rssi, (int16_t)-100, (int16_t)-20);
+        return (uint16_t)((rawDbm + 100) * 1024 / 80);
+      }
+      else {
+        if(channel < 4 || channel > state.input.channelCount) return 0;
+        float value = state.input.ch[channel - 1];        
+        return Utils::clamp(lrintf(Utils::map(value, -1.0f, 1.0f, 0.0f, 1023.0f)), 0l, 1023l);
+      }      
     }
 
     int load()
@@ -352,7 +358,7 @@ class Model
             break;
           case ESC_PROTOCOL_BRUSHED:
           case ESC_PROTOCOL_MULTISHOT:
-            config.output.rate = constrain(config.output.rate, 50, 8000);
+            config.output.rate = constrain(config.output.rate, 50, 32000);
             break;
           default:
             config.output.rate = constrain(config.output.rate, 50, 2000);
@@ -380,17 +386,17 @@ class Model
       }
 
       // sanitize throttle and motor limits
-      if(config.output.throttleLimitType < 0 || config.output.throttleLimitType >= THROTTLE_LIMIT_TYPE_MAX) {
-        config.output.throttleLimitType = THROTTLE_LIMIT_TYPE_NONE;
+      auto& throttleConfig = config.input.rates.rateProfile[config.input.rates.activeRateProfile].throttleConfig;
+      if(throttleConfig.throttleLimitType < 0 || throttleConfig.throttleLimitType >= THROTTLE_LIMIT_TYPE_MAX) 
+      {
+        throttleConfig.throttleLimitType = THROTTLE_LIMIT_TYPE_NONE;
       }
 
-      if(config.output.throttleLimitPercent < 1 || config.output.throttleLimitPercent > 100) {
-        config.output.throttleLimitPercent = 100;
+      if(throttleConfig.throttleLimitPercent < 1 || throttleConfig.throttleLimitPercent > 100) 
+      {
+        throttleConfig.throttleLimitPercent = 100;
       }
 
-      if(config.output.motorLimit < 1 || config.output.motorLimit > 100) {
-        config.output.motorLimit = 100;
-      }
 
       // configure serial ports
       constexpr uint32_t serialFunctionAllowedMask = SERIAL_FUNCTION_MSP | SERIAL_FUNCTION_RX_SERIAL | SERIAL_FUNCTION_BLACKBOX | 
@@ -418,6 +424,7 @@ class Model
         1 << (BUZZER_RX_SET - 1) |
         1 << (BUZZER_DISARMING - 1) |
         1 << (BUZZER_ARMING - 1) |
+        1 << (BUZZER_BAT_CRIT_LOW - 1) |
         1 << (BUZZER_BAT_LOW - 1);
 
         if(config.gyro.dynamicFilter.count > DYN_NOTCH_COUNT_MAX)
@@ -433,7 +440,8 @@ class Model
       // init timers
       // sample rate = clock / ( divider + 1)
       state.gyro.timer.setRate(state.gyro.rate);
-      int accelRate = Utils::alignToClock(state.gyro.timer.rate, 500);
+      const int accelMaxRate = state.gyro.dev && state.gyro.dev->getType() == GYRO_LSM6DSO ? 1666 : 500;
+      int accelRate = Utils::alignToClock(state.gyro.timer.rate, accelMaxRate);
       state.accel.timer.setRate(state.gyro.timer.rate, state.gyro.timer.rate / accelRate);
       state.loopTimer.setRate(state.gyro.timer.rate, config.loopSync);
       state.mixer.timer.setRate(state.loopTimer.rate, config.mixerSync);

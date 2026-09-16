@@ -41,7 +41,7 @@
 #define LSM6DSO_VAL_CTRL2_G_ODR6664        0x0A  // gyro 6664hz output data rate
 #define LSM6DSO_VAL_CTRL2_G_ODR3332        0x09  // gyro 3332hz output data rate
 #define LSM6DSO_VAL_CTRL2_G_2000DPS        0x03  // gyro 2000dps scale
-#define LSM6DSO_VAL_CTRL3_C_BDU            0x40  // (bit 6) output registers are not updated until MSB and LSB have been read (prevents MSB from being updated while burst reading LSB/MSB)
+#define LSM6DSO_VAL_CTRL3_C_BDU            0x40  // (bit 6) output registers are not updated until MSB and LSB have been read (prevents MSB from being updated while burst reading  /MSB)
 #define LSM6DSO_VAL_CTRL3_C_H_LACTIVE      0x00  // (bit 5) interrupt pins active high
 #define LSM6DSO_VAL_CTRL3_C_PP_OD          0x00  // (bit 4) interrupt pins push/pull
 #define LSM6DSO_VAL_CTRL3_C_SIM            0x00  // (bit 3) SPI 4-wire interface mode
@@ -53,10 +53,11 @@
 #define LSM6DSO_VAL_CTRL6_C_FTYPE_232HZ    0x01  // (bits 2:0) gyro LPF1 cutoff 232.0hz
 #define LSM6DSO_VAL_CTRL6_C_FTYPE_171HZ    0x02  // (bits 2:0) gyro LPF1 cutoff 171.1hz
 #define LSM6DSO_VAL_CTRL6_C_FTYPE_609HZ    0x03  // (bits 2:0) gyro LPF1 cutoff 609.0hz
-#define LSM6DSO_VAL_CTRL8_XL_COMPOSITE_EN  0x08  // Bit 3 enables composite filter path
-#define LSM6DSO_VAL_CTRL8_XL_BW_ODR_4      0x00  // Sets bandwidth to ODR/4
-#define LSM6DSO_VAL_CTRL8_XL_BW_ODR_10     0x01  // Sets bandwidth to ODR/10
-#define LSM6DSO_VAL_CTRL8_XL_BW_ODR_20     0x02  // Sets bandwidth to ODR/20
+#define LSM6DSO_VAL_CTRL8_XL_BW_ODR_4      0x00  // HPCF_XL = 000: accelerometer LPF2 bandwidth ODR/4
+#define LSM6DSO_VAL_CTRL8_XL_BW_ODR_10     0x20  // HPCF_XL = 001: accelerometer LPF2 bandwidth ODR/10
+#define LSM6DSO_VAL_CTRL8_XL_BW_ODR_20     0x40  // HPCF_XL = 010: accelerometer LPF2 bandwidth ODR/20
+#define LSM6DSO_VAL_CTRL8_XL_BW_ODR_45     0x60  // HPCF_XL = 011: accelerometer LPF2 bandwidth ODR/45
+#define LSM6DSO_VAL_CTRL8_XL_FASTSETTL     0X08  // (bit 1)
 #define LSM6DSO_VAL_CTRL9_XL_I3C_DISABLE   0x02  // (bit 1) disable I3C interface
 
 // masks
@@ -105,7 +106,7 @@ class GyroLSM6DSO: public GyroDevice
       
       if (!success) return 0; // Return failure if timeout reached
       
-      // Accel, 1666hz ODR, 8G scale, use LPF2 output
+      // Accel, 1666Hz ODR, 8G scale, use the LPF2 output path
       _bus->writeByte(_addr, LSM6DSO_REG_CTRL1_XL, (LSM6DSO_VAL_CTRL1_XL_ODR1666 << 4) | (LSM6DSO_VAL_CTRL1_XL_8G << 2) | (LSM6DSO_VAL_CTRL1_XL_LPF2 << 1));
       delay(1);
 
@@ -119,11 +120,11 @@ class GyroLSM6DSO: public GyroDevice
       // Disable I2C interface and route gyro output through LPF1
       _bus->writeMask(_addr, LSM6DSO_REG_CTRL4_C, LSM6DSO_MASK_CTRL4_C, LSM6DSO_VAL_CTRL4_C_I2C_DISABLE | LSM6DSO_VAL_CTRL4_C_LPF1_SEL_G);
 
-      // Enable accelerometer high-performance mode and set gyro LPF1 cutoff to 335 Hz
-      _bus->writeMask(_addr, LSM6DSO_REG_CTRL6_C, LSM6DSO_MASK_CTRL6_C, (LSM6DSO_VAL_CTRL6_C_XL_HM_MODE | LSM6DSO_VAL_CTRL6_C_FTYPE_335HZ));
+      // Enable accelerometer high-performance mode and set gyro LPF1 cutoff to 232 Hz
+      _bus->writeMask(_addr, LSM6DSO_REG_CTRL6_C, LSM6DSO_MASK_CTRL6_C, (LSM6DSO_VAL_CTRL6_C_XL_HM_MODE | LSM6DSO_VAL_CTRL6_C_FTYPE_232HZ));
 
-      // Enable accelerometer composite filter (LPF1 + LPF2)
-      _bus->writeByte(_addr, LSM6DSO_REG_CTRL8_XL, LSM6DSO_VAL_CTRL8_XL_COMPOSITE_EN | LSM6DSO_VAL_CTRL8_XL_BW_ODR_20);
+      // Select XL LPF2 bandwidth at ODR/10 and enable fast settling.
+      _bus->writeByte(_addr, LSM6DSO_REG_CTRL8_XL, (LSM6DSO_VAL_CTRL8_XL_BW_ODR_10 | LSM6DSO_VAL_CTRL8_XL_FASTSETTL));
 
       // disable I3C interface
       _bus->writeMask(_addr, LSM6DSO_REG_CTRL9_XL, LSM6DSO_MASK_CTRL9_XL, LSM6DSO_VAL_CTRL9_XL_I3C_DISABLE);
@@ -162,25 +163,7 @@ class GyroLSM6DSO: public GyroDevice
     }
 
     void setDLPFMode(uint8_t mode) override
-    {
-      uint8_t ftype;
-
-      // Map requested enum to the closest hardware supported frequency
-      switch (mode)
-      {
-        case GYRO_DLPF_256: // Closest to 609Hz
-        case GYRO_DLPF_188:
-        case GYRO_DLPF_98:  ftype = LSM6DSO_VAL_CTRL6_C_FTYPE_609HZ; break;
-        case GYRO_DLPF_42:  ftype = LSM6DSO_VAL_CTRL6_C_FTYPE_335HZ; break;
-        case GYRO_DLPF_20:  ftype = LSM6DSO_VAL_CTRL6_C_FTYPE_232HZ; break;
-        case GYRO_DLPF_10:
-        case GYRO_DLPF_5:
-        case GYRO_DLPF_EX:  ftype = LSM6DSO_VAL_CTRL6_C_FTYPE_171HZ; break; // Lowest available
-        default:            ftype = LSM6DSO_VAL_CTRL6_C_FTYPE_335HZ; break; // Safe default
-      }
-
-      // Update CTRL6_C bits 2:0 while preserving bit 4 (XL High Performance mode)
-      _bus->writeMask(_addr, LSM6DSO_REG_CTRL6_C, LSM6DSO_MASK_CTRL6_C, (LSM6DSO_VAL_CTRL6_C_XL_HM_MODE | ftype));
+    {      
     }  
 
     int getRate() const override
