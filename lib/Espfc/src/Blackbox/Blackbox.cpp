@@ -47,13 +47,13 @@ int Blackbox::begin()
     rp->rcRates[i] = p.rate[i];
     rp->rcExpo[i] = p.expo[i];
     rp->rates[i] = p.superRate[i];
-    rp->rate_limit[i] = _model.config.input.rates.rateLimit[i];
+    rp->rate_limit[i] = _model.config.input.rateLimit[i];
   }
   
   rp->thrMid8 = p.throttleConfig.mid;
   rp->thrExpo8 = p.throttleConfig.expo ;
-  rp->dynThrPID = p.controllerConfig.tpaScale;
-  rp->tpa_breakpoint = p.controllerConfig.tpaBreakpoint;
+  rp->dynThrPID = _model.config.controller.tpaScale;
+  rp->tpa_breakpoint = _model.config.controller.tpaBreakpoint;
   rp->rates_type = p.rateType;
 
   pidProfile_s * cp = currentPidProfile = &_pidProfile;

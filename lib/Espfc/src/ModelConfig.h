@@ -430,16 +430,14 @@ struct RateProfile
   int8_t superRate[3] = { 40, 40, 36 };  
   int8_t rateType = 3;
 
-  ThrottleConfig throttleConfig;
-  ControllerConfig controllerConfig;
+  ThrottleConfig throttleConfig;  
 };
 
 struct RatesConfig
 {
-  RateProfile rateProfile[3];
-  int16_t rateLimit[3] = { 1998, 1998, 1998 };
-  int8_t activeRateProfile = 0;
-  bool updateAvailable = false; 
+  RateProfile rateProfile[3];      // The container for your 3 selectable profiles
+  int8_t activeRateProfile = 0;    // Selector
+  bool updateAvailable = false;    // Status flag
 };
 
 struct InputConfig
@@ -463,6 +461,7 @@ struct InputConfig
   FilterConfig filterDerivative{FILTER_PT3, 0};
 
   RatesConfig rates;
+  int16_t rateLimit[3] = { 1998, 1998, 1998 };
 
   uint8_t rssiChannel = 0;
 
@@ -885,7 +884,7 @@ class ModelConfig
     OutputConfig output;
     BlackboxConfig blackbox;
     DebugConfig debug;
-    Adjustments adjustmentRanges[3];
+    Adjustments adjustmentRanges[3];    
 
     // not classified yet
     int16_t i2cSpeed = 800;

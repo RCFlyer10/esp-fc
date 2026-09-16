@@ -35,6 +35,8 @@ int FAST_CODE_ATTR Controller::update()
     _model.state.debug[0] = startTime - _model.state.loopTimer.last;
   }
 
+  processStickCommands();
+
   {
     Utils::Stats::Measure(_model.state.stats, COUNTER_OUTER_PID);
     resetIterm();
@@ -74,7 +76,7 @@ void Controller::outerLoopRobot()
   const auto& input = _model.state.input;
   const auto& levelConf = _model.config.level;
 
-  if (true || _model.isModeActive(MODE_ANGLE))
+  if (_model.isModeActive(MODE_ANGLE))
   {
     angle = input.ch[AXIS_PITCH] * Utils::toRad(levelConf.angleLimit);
   }
@@ -127,20 +129,46 @@ void Controller::innerLoopRobot()
 
 void FAST_CODE_ATTR Controller::outerLoop()
 {
-  // Roll/Pitch rates control
-  if (_model.isModeActive(MODE_ANGLE))
+  const size_t debugAxis = std::min<size_t>(_model.config.debug.axis, AXIS_COUNT_RP - 1);
+  float debugAngleSetpoint = 0.f;
+  float debugAngle = 0.f;
+  float debugRateSetpoint = 0.f;
+
+  for (size_t i = 0; i < AXIS_COUNT_RP; ++i)
   {
-    for (size_t i = 0; i < AXIS_COUNT_RP; i++)
+    if (_model.isModeActive(MODE_ACRO_TRAINER))
     {
-      const float angleSetpoint = Utils::toRad(_model.config.level.angleLimit) * _model.state.input.ch[i];
-      _model.state.setpoint.rate[i] = _model.state.outerPid[i].update(angleSetpoint, _model.state.attitude.euler[i]);
-      // disable fterm in angle mode
-      _model.state.innerPid[i].fScale = 0.f;
+      float acroSetpoint = calculateSetpointRate(i, _model.state.input.ch[i]);
+      float currentAngle = _model.state.attitude.euler[i];
+      float limit = Utils::toRad(_model.config.acro_trainer_angle_limit);
+
+      if ((currentAngle > limit && acroSetpoint > 0.0f) ||
+          (currentAngle < -limit && acroSetpoint < 0.0f))
+      {
+        _model.state.setpoint.rate[i] = 0.0f;
+      }
+      else
+      {
+        _model.state.setpoint.rate[i] = acroSetpoint;
+      }
     }
-  }
-  else
-  {
-    for (size_t i = 0; i < AXIS_COUNT_RP; i++)
+    else if (_model.isModeActive(MODE_ANGLE))
+    {
+      float profiledRate = calculateSetpointRate(i, _model.state.input.ch[i]);
+      float fullScaleRate = calculateSetpointRate(i, 1.0f);
+      float profiledStick = fullScaleRate > 0.f ? Utils::clamp(profiledRate / fullScaleRate, -1.0f, 1.0f) : 0.f;
+      const float angleSetpoint = Utils::toRad(_model.config.level.angleLimit) * profiledStick;
+      _model.state.setpoint.rate[i] = _model.state.outerPid[i].update(angleSetpoint, _model.state.attitude.euler[i]);
+      _model.state.innerPid[i].fScale = 0.f;
+
+      if (i == debugAxis)
+      {
+        debugAngleSetpoint = angleSetpoint;
+        debugAngle = _model.state.attitude.euler[i];
+        debugRateSetpoint = _model.state.setpoint.rate[i];
+      }
+    }
+    else
     {
       _model.state.setpoint.rate[i] = calculateSetpointRate(i, _model.state.input.ch[i]);
     }
@@ -167,10 +195,12 @@ void FAST_CODE_ATTR Controller::outerLoop()
   // debug
   if (_model.config.debug.mode == DEBUG_ANGLERATE)
   {
-    for (size_t i = 0; i < AXIS_COUNT_RPY; ++i)
-    {
-      _model.state.debug[i] = lrintf(Utils::toDeg(_model.state.setpoint.rate[i]));
-    }
+    _model.state.debug[0] = lrintf(Utils::toDeg(debugAngleSetpoint) * 10.f);
+    _model.state.debug[1] = lrintf(Utils::toDeg(debugAngle) * 10.f);
+    _model.state.debug[2] = lrintf(Utils::toDeg(debugRateSetpoint));
+    _model.state.debug[3] = lrintf(Utils::toDeg(_model.state.gyro.adc[debugAxis]));
+    _model.state.debug[4] = lrintf(Utils::toDeg(debugAngleSetpoint - debugAngle) * 10.f);
+    _model.state.debug[5] = lrintf(Utils::toDeg(_model.state.outerPid[debugAxis].pTerm));
   }
 }
 
@@ -357,6 +387,75 @@ void Controller::beginAltHold()
   pid.dtermFilter.begin(FilterConfig(FILTER_PT1, 10), _model.state.loopTimer.rate);
   pid.ftermDerivative = false;
   pid.begin();
+}
+
+void Controller::processStickCommands()
+{  
+  if(_saveRequested && !_model.isModeActive(MODE_ARMED))
+  {
+    if(_model.state.input.us[AXIS_THRUST] <= _model.config.input.minCheck 
+      && _model.state.input.us[AXIS_PITCH] <= _model.config.input.minCheck
+      && _model.state.input.us[AXIS_ROLL] >= _model.config.input.maxCheck 
+      && _model.state.input.us[AXIS_YAW] <= _model.config.input.minCheck)
+    {
+      _model.save();
+      _model.state.led_1.setStatus(Connect::LED_DOUBLE_FLASH);
+      _saveRequested = false;
+      _trimming = false;
+    }
+  }
+  
+  if(_model.isModeActive(MODE_ARMED)) return;
+
+  
+  if(_model.isModeActive(MODE_ANGLE))
+  {     
+    if(!_trimming)
+    {
+      if(_model.state.input.us[AXIS_THRUST] >= _model.config.input.maxCheck)
+      {               
+        if(_model.state.input.us[AXIS_ROLL] >= _model.config.input.maxCheck)
+        {
+          _model.config.accel.trim[1] -= 1;
+          _model.onAccChange();
+          _trimming = true;
+        }
+        else if(_model.state.input.us[AXIS_ROLL] <= _model.config.input.minCheck)
+        {
+          _model.config.accel.trim[1] += 1;
+          _model.onAccChange();
+          _trimming = true;          
+        }
+        else if(_model.state.input.us[AXIS_PITCH] >= _model.config.input.maxCheck)
+        {
+          _model.config.accel.trim[0] -= 1;
+          _model.onAccChange();
+          _trimming = true;          
+        }
+        else if(_model.state.input.us[AXIS_PITCH] <= _model.config.input.minCheck)
+        {
+          _model.config.accel.trim[0] += 1;
+          _model.onAccChange();
+          _trimming = true;          
+        }        
+      }
+    }
+    else if(_model.state.input.us[AXIS_THRUST] <= _model.config.input.minCheck)
+    {       
+      if(_model.state.input.us[AXIS_ROLL] > _model.config.input.minCheck && _model.state.input.us[AXIS_ROLL] < _model.config.input.maxCheck
+        && _model.state.input.us[AXIS_PITCH] > _model.config.input.minCheck && _model.state.input.us[AXIS_PITCH] < _model.config.input.maxCheck)
+      {        
+        _model.state.led_1.setStatus(Connect::LED_INIT);
+        _trimming = false;
+        _saveRequested = true;
+      }
+    }
+  }
+  else if(_model.state.input.us[AXIS_THRUST] >= _model.config.input.maxCheck && _model.state.input.us[AXIS_YAW] <= _model.config.input.minCheck
+    && _model.state.input.us[AXIS_PITCH] <= _model.config.input.minCheck)
+  {
+    _model.calibrateGyro();    
+  }
 }
 
 } // namespace Espfc::Control

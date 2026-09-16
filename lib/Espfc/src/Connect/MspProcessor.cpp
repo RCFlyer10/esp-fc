@@ -936,10 +936,10 @@ void MspProcessor::processCommand(MspMessage& m, MspResponse& r, Device::SerialD
       {
         r.writeU8(p.superRate[i]);
       }
-      r.writeU8(p.controllerConfig.tpaScale); // dyn thr pid
+      r.writeU8(_model.config.controller.tpaScale); // dyn thr pid
       r.writeU8(p.throttleConfig.mid); // thrMid8
       r.writeU8(p.throttleConfig.expo);  // thr expo
-      r.writeU16(p.controllerConfig.tpaBreakpoint); // tpa breakpoint
+      r.writeU16(_model.config.controller.tpaBreakpoint); // tpa breakpoint
       r.writeU8(p.expo[AXIS_YAW]); // yaw expo
       r.writeU8(p.rate[AXIS_YAW]); // yaw rate
       r.writeU8(p.rate[AXIS_PITCH]); // pitch rate
@@ -948,9 +948,9 @@ void MspProcessor::processCommand(MspMessage& m, MspResponse& r, Device::SerialD
       r.writeU8(p.throttleConfig.throttleLimitType); // throttle_limit_type (off)
       r.writeU8(p.throttleConfig.throttleLimitPercent); // throtle_limit_percent (100%)
       //1.42+
-      r.writeU16(_model.config.input.rates.rateLimit[0]); // rate limit roll
-      r.writeU16(_model.config.input.rates.rateLimit[1]); // rate limit pitch
-      r.writeU16(_model.config.input.rates.rateLimit[2]); // rate limit yaw
+      r.writeU16(_model.config.input.rateLimit[AXIS_ROLL]); // rate limit roll
+      r.writeU16(_model.config.input.rateLimit[AXIS_PITCH]); // rate limit pitch
+      r.writeU16(_model.config.input.rateLimit[AXIS_YAW]); // rate limit yaw
       // 1.43+
       r.writeU8(p.rateType); // rates type      
       break;
@@ -965,10 +965,10 @@ void MspProcessor::processCommand(MspMessage& m, MspResponse& r, Device::SerialD
         p.rate[AXIS_ROLL] = m.readU8();
         p.expo[AXIS_ROLL] = m.readU8();
         for(size_t i = 0; i < AXIS_COUNT_RPY; i++) p.superRate[i] = m.readU8();
-        p.controllerConfig.tpaScale = m.readU8();
+        _model.config.controller.tpaScale = m.readU8();
         p.throttleConfig.mid = m.readU8(); 
         p.throttleConfig.expo = m.readU8(); 
-        p.controllerConfig.tpaBreakpoint = m.readU16();
+        _model.config.controller.tpaBreakpoint = m.readU16();
 
         // BF 4.x / Configurator 10.9+ additions
         if(m.remain() >= 1) p.expo[AXIS_YAW] = m.readU8();
