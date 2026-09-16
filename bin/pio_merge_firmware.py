@@ -19,6 +19,8 @@ def merge_bin(source, target, env):
                 "--chip",
                 BOARD_CONFIG.get("build.mcu", "esp32"),
                 "merge_bin",
+                "--flash_mode",
+                "qio",
                 "--flash_size",
                 BOARD_CONFIG.get("upload.flash_size", "4MB"),
                 "-o",
